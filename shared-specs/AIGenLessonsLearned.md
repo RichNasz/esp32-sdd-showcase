@@ -29,6 +29,11 @@
 4. Regenerate with the full-project-generator skill.
 5. Never manually edit generated code.
 
+- **Kconfig.projbuild must live in a component directory** (e.g. `main/`), not the project
+  root. ESP-IDF only auto-discovers Kconfig.projbuild inside component dirs. Placing it at
+  the root silently drops all its symbols, causing #error guards and undeclared-identifier
+  cascades at compile time. (Feb 2026)
+
 ## Template for Adding New Lessons
 When you discover something important:
 - Add it here under "Key Lessons Learned"

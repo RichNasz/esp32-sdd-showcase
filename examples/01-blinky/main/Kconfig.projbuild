@@ -1,0 +1,11 @@
+# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator
+choice BOARD_SELECT
+    prompt "Target board"
+    default BOARD_SEEED_XIAO_ESP32S3
+
+    config BOARD_SEEED_XIAO_ESP32S3
+        bool "Seeed XIAO ESP32S3"
+
+    config BOARD_ADAFRUIT_HUZZAH32
+        bool "Adafruit HUZZAH32 (ESP32 Feather)"
+endchoice

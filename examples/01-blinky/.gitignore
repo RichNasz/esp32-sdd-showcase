@@ -1,3 +1,4 @@
+# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator
 build/
 sdkconfig
 sdkconfig.old

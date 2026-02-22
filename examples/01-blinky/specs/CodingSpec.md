@@ -1,13 +1,17 @@
+# ==================== BOARD SELECTION ====================
+# Change only this section, then regenerate the project
+#
+# Board: seeed-xiao-esp32s3          ← ACTIVE / DEFAULT (your XIAO ESP32S3 boards)
+# # Board: adafruit-huzzah32         ← Uncomment this line to switch to HUZZAH32
+#
+# =======================================================
 # Institutional Memory: shared-specs/AIGenLessonsLearned.md — read before regenerating
-# Board Selection (change this line and regenerate)
-# Board: adafruit-huzzah32
-# (or change to: seeed-xiao-esp32s3)
 
 # Coding Specification — Breathing LED (Multi-Board)
 
 ## Board Abstraction
 - LED GPIO is NOT hard-coded. It is derived from the active board-spec via Kconfig.
-- Kconfig.projbuild exposes a `BOARD_SELECT` choice (default: BOARD_ADAFRUIT_HUZZAH32).
+- Kconfig.projbuild exposes a `BOARD_SELECT` choice (default: BOARD_SEEED_XIAO_ESP32S3).
 - sdkconfig.defaults sets the default to match `# Board:` comment above.
 - main.c resolves LED_GPIO at compile time via CONFIG_BOARD_* macros.
 - `LED_ACTIVE_LOW` compile-time flag: `0` for HUZZAH32 (GPIO HIGH = LED on), `1` for XIAO (GPIO LOW = LED on).
@@ -35,8 +39,15 @@
 - The XIAO ESP32S3 uses native USB for its serial console; there is no USB-to-UART chip.
 - `CONFIG_ESP_CONSOLE_USB_CDC=y` must be set in sdkconfig.defaults when targeting esp32s3.
 - Without this setting, `idf.py monitor` shows no output on XIAO hardware.
-- This line is commented out in sdkconfig.defaults by default (HUZZAH32 is the default board).
-  Uncomment it — and comment out any UART console config — when switching to XIAO.
+- `CONFIG_ESP_CONSOLE_USB_CDC=y` is active (uncommented) in sdkconfig.defaults because XIAO is the default board.
+  Comment it out — and uncomment any UART console config — when switching to HUZZAH32.
+
+## Agent-Generated Headers (required on every generated file)
+- All generated files must carry the standard agent-generated header on line 1.
+- Use the format appropriate to the file type:
+  - `.c` files: `/* AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator */`
+  - `CMakeLists.txt`, `sdkconfig.defaults`, `.gitignore`, `Kconfig.projbuild`: `# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator`
+  - `README.md`: the full HTML comment block (see existing README for format)
 
 ## Error Handling
 - Wrap every ESP-IDF call with ESP_ERROR_CHECK.
@@ -44,8 +55,8 @@
 ## File Layout (locked — matches example-project-structure-spec.md)
 - main/main.c
 - main/CMakeLists.txt
+- main/Kconfig.projbuild
 - CMakeLists.txt
-- Kconfig.projbuild
 - sdkconfig.defaults
 - .gitignore
 - README.md
