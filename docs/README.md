@@ -36,7 +36,7 @@ The ESP32 SDD Showcase is a reference implementation of **Spec-Driven Developmen
 
 ## Agent Skills
 
-Six skills implement the full SDD pipeline. Skills are **project-local** — they live in `.claude/skills/` inside this repository and are available in Claude Code automatically when you open the project. No install command is needed.
+Seven skills implement the full SDD pipeline. Skills are **project-local** — they live in `.claude/skills/` inside this repository and are available in Claude Code automatically when you open the project. No install command is needed.
 
 See [docs/guides/using-with-ai-agents.md](guides/using-with-ai-agents.md) for Claude Code setup and workflow details.
 
@@ -48,6 +48,7 @@ See [docs/guides/using-with-ai-agents.md](guides/using-with-ai-agents.md) for Cl
 | `esp32-deep-sleep-engineer` | Designs sleep configurations and power budgets |
 | `esp32-hardware-crypto-configurer` | Configures hardware AES, secure boot, flash encryption |
 | `esp32-sdd-documentation-generator` | Regenerates all documentation from specs (this file!) |
+| `esp32-sdd-project-validator` | Validates any example against the permanent locked structure; reports PASS/FAIL per check |
 
 See [skills/README.md](../skills/README.md) for full details.
 

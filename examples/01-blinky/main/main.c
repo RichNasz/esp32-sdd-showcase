@@ -40,8 +40,12 @@ static bool IRAM_ATTR ledc_fade_done_cb(const ledc_cb_param_t *param, void *arg)
     if (param->event == LEDC_FADE_END_EVT) {
         fading_to_on = !fading_to_on;
         uint32_t next = fading_to_on ? DUTY_ON : DUTY_OFF;
+        /* Note: ESP_ERROR_CHECK must NOT be used here — esp_log/abort are
+           unsafe in ISR/IRAM context. Calls are intentionally bare. */
         ledc_set_fade_with_time(LEDC_MODE, LEDC_CHANNEL, next, FADE_TIME_MS);
         ledc_fade_start(LEDC_MODE, LEDC_CHANNEL, LEDC_FADE_NO_WAIT);
+        ESP_DRAM_LOGI(TAG, "Fade %s → duty %lu",
+                      fading_to_on ? "up" : "down", (unsigned long)next);
     }
     return higher_prio_woken == pdTRUE;
 }
@@ -51,6 +55,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Board GPIO=%d  freq=%d Hz  resolution=%d-bit  polarity=active-%s",
              LED_GPIO, LEDC_FREQ_HZ, LEDC_RESOLUTION,
              LED_ACTIVE_LOW ? "LOW" : "HIGH");
+    ESP_LOGI(TAG, "Breathing period: %d ms", FADE_TIME_MS * 2);
 
     ledc_timer_config_t timer = {
         .speed_mode      = LEDC_MODE,
@@ -77,11 +82,12 @@ void app_main(void)
     ledc_cbs_t cbs = { .fade_cb = ledc_fade_done_cb };
     ESP_ERROR_CHECK(ledc_cb_register(LEDC_MODE, LEDC_CHANNEL, &cbs, NULL));
 
-    ESP_LOGI(TAG, "Fade started — breathing period: %d ms", FADE_TIME_MS * 2);
     /* First fade: dark → bright (DUTY_OFF → DUTY_ON) */
+    ESP_LOGI(TAG, "Fade up → duty %lu", (unsigned long)DUTY_ON);
     ESP_ERROR_CHECK(ledc_set_fade_with_time(LEDC_MODE, LEDC_CHANNEL, DUTY_ON, FADE_TIME_MS));
     ESP_ERROR_CHECK(ledc_fade_start(LEDC_MODE, LEDC_CHANNEL, LEDC_FADE_NO_WAIT));
 
+    /* All subsequent breathing is driven by ledc_fade_done_cb */
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }

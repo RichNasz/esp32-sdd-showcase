@@ -19,7 +19,7 @@ This file is the gold standard institutional memory of the project. It contains:
 - **Debugging workflow** for when something goes wrong (improve the spec; never patch generated code)
 - **A template** for adding new lessons as the project grows
 
-All four primary skills (`esp32-sdd-full-project-generator`, `esp32-sdd-documentation-generator`, `esp32-board-spec-generator`, `esp32-sdd-functional-spec-creator`) enforce reading this file as their mandatory first step.
+All skills enforce reading this file as their mandatory first step.
 
 ---
 

@@ -18,6 +18,7 @@ Agent skills published for this repository. Each skill is a self-contained AI wo
 | [esp32-deep-sleep-engineer](esp32-deep-sleep-engineer/SKILL.md) | Designs deep-sleep configurations, ULP programs, and power budgets. |
 | [esp32-hardware-crypto-configurer](esp32-hardware-crypto-configurer/SKILL.md) | Configures hardware AES/SHA/RSA, NVS encryption, flash encryption, and secure boot. |
 | [esp32-sdd-full-project-generator](esp32-sdd-full-project-generator/SKILL.md) | The primary code-gen skill — produces a complete ESP-IDF project from spec files. |
+| [esp32-sdd-project-validator](esp32-sdd-project-validator/SKILL.md) | Validates any example folder against the permanent locked structure; reports PASS/FAIL for every check. |
 
 ## Installing Skills
 

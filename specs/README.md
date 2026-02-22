@@ -16,6 +16,7 @@
 | `repo-overview-spec.md` | Repository purpose, key features, and quick-start instructions |
 | `documentation-generation-spec.md` | Rules for AI documentation generation (AI-first rule, file layout, tone) |
 | `contributing-spec.md` | Contribution guidelines: what humans may edit and how to trigger regeneration |
+| `example-project-structure-spec.md` | Permanent, immutable directory layout every example must follow (enforced by the full-project-generator and validator skills) |
 
 ## The Rule
 

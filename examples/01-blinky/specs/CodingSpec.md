@@ -24,16 +24,23 @@
   low-speed mode (LEDC_LOW_SPEED_MODE) for ESP32-S3 (no high-speed mode).
 - Frequency: 5000 Hz, 13-bit duty resolution.
 - Channel: LEDC_CHANNEL_0.
+- Timer clock: LEDC_AUTO_CLK (let the driver select the optimal source).
+- Channel intr_type: LEDC_INTR_DISABLE (fade callbacks replace hardware interrupts).
+- Channel hpoint: 0 (standard PWM phase alignment).
 - Use ledc_fade_func_install() + ledc_set_fade_with_time() for smooth fades.
 - Register a ledc_cbs_t callback (ledc_cb_register) for fade-done events.
 - On fade-done: callback toggles between `DUTY_ON` and `DUTY_OFF` — never between raw 0 and max.
 - Variable `fading_to_on` (bool) tracks current fade direction; toggled in the callback.
 - Breathing sequence: DUTY_OFF → DUTY_ON → DUTY_OFF → … (always starts dark, then brightens).
+- After starting the first fade, app_main enters an infinite `vTaskDelay(pdMS_TO_TICKS(1000))` loop;
+  all subsequent breathing work is driven by the fade callback.
 
 ## Logging
 - Tag: "blinky"
-- On init: log target, GPIO number, frequency, resolution, and active polarity (`active-HIGH` or `active-LOW`).
-- On each fade start: log direction (up/down) and duty target.
+- On init: log GPIO number, frequency, resolution, and active polarity (`active-HIGH` or `active-LOW`).
+- On init: log total breathing period in ms (FADE_TIME_MS * 2).
+- On each fade start inside the callback: log fade direction ("up" or "down") and the target duty
+  value (DUTY_ON or DUTY_OFF resolved to its raw integer).
 
 ## USB-CDC (XIAO ESP32S3)
 - The XIAO ESP32S3 uses native USB for its serial console; there is no USB-to-UART chip.
@@ -51,6 +58,11 @@
 
 ## Error Handling
 - Wrap every ESP-IDF call with ESP_ERROR_CHECK.
+- Exception: `ledc_set_fade_with_time()` and `ledc_fade_start()` called inside the IRAM_ATTR
+  fade callback must NOT use ESP_ERROR_CHECK — abort() from ISR context is unsafe. Call them
+  bare and ignore the return value inside the callback.
+- For logging inside the IRAM_ATTR callback, use `ESP_DRAM_LOGI` (not `ESP_LOGI`). This macro
+  places the format string in DRAM rather than flash, making it safe to access from IRAM context.
 
 ## File Layout (locked — matches example-project-structure-spec.md)
 - main/main.c

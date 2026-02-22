@@ -21,6 +21,10 @@
 - Include watchdog, error handling, and deep-sleep current targets in every spec.
 - Sine-wave breathing, debouncing, and state machines work best when the algorithm is fully described in the CodingSpec.
 - The first error is almost always a missing constraint in the spec, not a bad AI.
+- **Kconfig.projbuild must live in a component directory** (e.g. `main/`), not the project
+  root. ESP-IDF only auto-discovers Kconfig.projbuild inside component dirs. Placing it at
+  the root silently drops all its symbols, causing #error guards and undeclared-identifier
+  cascades at compile time. (Feb 2026)
 
 ## Required Workflow When Something Goes Wrong
 1. Read this file.
@@ -28,11 +32,6 @@
 3. Improve the FunctionalSpec.md or CodingSpec.md.
 4. Regenerate with the full-project-generator skill.
 5. Never manually edit generated code.
-
-- **Kconfig.projbuild must live in a component directory** (e.g. `main/`), not the project
-  root. ESP-IDF only auto-discovers Kconfig.projbuild inside component dirs. Placing it at
-  the root silently drops all its symbols, causing #error guards and undeclared-identifier
-  cascades at compile time. (Feb 2026)
 
 ## Template for Adding New Lessons
 When you discover something important:
