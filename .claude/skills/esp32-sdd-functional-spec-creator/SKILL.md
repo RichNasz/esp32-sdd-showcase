@@ -18,6 +18,8 @@ keywords: sdd, esp32, functional-spec, requirements, planning, specification
 When starting a new example or feature. Always run this skill before `esp32-sdd-full-project-generator` — the full-project generator requires a completed `FunctionalSpec.md` as its primary input.
 
 ## Workflow (follow exactly)
+MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before doing anything else.
+
 1. Ask the user for: example name (slug), target board, and high-level goal in one sentence.
 2. Derive hardware requirements from the goal (sensors, radios, power mode, security needs, connectivity).
 3. Ask clarifying questions only if a requirement is genuinely ambiguous (wakeup source, MQTT topic, etc.).

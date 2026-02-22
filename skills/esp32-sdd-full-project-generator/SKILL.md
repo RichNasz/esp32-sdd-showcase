@@ -38,6 +38,8 @@ examples/<kebab-name>/
 Do not create files outside this layout. Do not place `FunctionalSpec.md` or `CodingSpec.md` at the example root — they belong in `specs/`. Do not add extra top-level files unless they are in this list.
 
 ## Workflow (follow exactly)
+MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before doing anything else.
+
 1. Read `examples/<name>/specs/FunctionalSpec.md` and `examples/<name>/specs/CodingSpec.md`.
 2. Read the relevant `board-specs/<vendor>/<board>.md` file identified in the FunctionalSpec.
 3. Read any `shared-specs/` files referenced in either spec.

@@ -1,7 +1,7 @@
 # Showcase Master Specification
 
 ## Examples Catalog
-01-blinky-huzzah32 – baseline PWM breathing LED  
+01-blinky – breathing LED, multi-board (HUZZAH32 + XIAO ESP32S3)
 02-deep-sleep-timer-node – RTC wakeup + persistence  
 03-deep-sleep-bme280-mqtt – real IoT sensor node  
 04-hardware-aes-secure-storage – crypto accelerator  

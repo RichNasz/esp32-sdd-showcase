@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-02-22 (updated) | Agent: Claude Code
      ================================================ -->
 
 # ESP32 SDD Showcase — Full Documentation
@@ -19,12 +19,13 @@ The ESP32 SDD Showcase is a reference implementation of **Spec-Driven Developmen
 | [Guides](guides/README.md) | Step-by-step tutorials: setting up the toolchain, running your first example, adding a new board |
 | [Reference](reference/README.md) | API quick-reference, pin mapping tables, sdkconfig option index |
 | [Workflows](workflows/README.md) | The complete SDD workflow: from spec to flashed firmware |
+| [Board Specs](../board-specs/README.md) | AI-generated hardware specs for supported ESP32 boards; see also [Creating New Board Specs](guides/creating-new-board-specs.md) |
 
 ## Examples Catalog
 
 | # | Example | Concept |
 |---|---|---|
-| 01 | [blinky-huzzah32](../examples/01-blinky-huzzah32/) | Baseline: SDD structure + LEDC PWM |
+| 01 | [blinky](../examples/01-blinky/) | Baseline: SDD structure + LEDC PWM, multi-board |
 | 02 | [deep-sleep-timer-node](../examples/02-deep-sleep-timer-node/) | RTC wakeup + NVS persistence |
 | 03 | [deep-sleep-bme280-mqtt](../examples/03-deep-sleep-bme280-mqtt/) | IoT sensor node: BME280 + Wi-Fi + MQTT |
 | 04 | [hardware-aes-secure-storage](../examples/04-hardware-aes-secure-storage/) | AES-256 hardware accelerator |
@@ -60,8 +61,7 @@ esp32-sdd-showcase/
 ├── board-specs/        ← AGENT-GENERATED board hardware specs
 ├── skills/             ← AGENT-GENERATED skill definitions
 ├── templates/          ← AGENT-GENERATED spec templates
-├── docs/               ← AGENT-GENERATED documentation (you are here)
-└── .github/workflows/  ← AGENT-GENERATED CI/CD
+└── docs/               ← AGENT-GENERATED documentation (you are here)
 ```
 
 ## The SDD Workflow in Three Steps
@@ -74,7 +74,7 @@ Full workflow details: [docs/workflows/README.md](workflows/README.md)
 
 ## IDE Integration
 
-Each example is a standalone ESP-IDF project. For the best development experience open **only the example folder** (e.g. `examples/01-blinky-huzzah32/`) in VS Code or Cursor — not the repository root. The official ESP-IDF Extension will then auto-detect the project and enable one-click build, flash, monitor, and debug.
+Each example is a standalone ESP-IDF project. For the best development experience open **only the example folder** (e.g. `examples/01-blinky/`) in VS Code or Cursor — not the repository root. The official ESP-IDF Extension will then auto-detect the project and enable one-click build, flash, monitor, and debug.
 
 See [guides/using-with-ai-agents.md](guides/using-with-ai-agents.md) for full setup details.
 

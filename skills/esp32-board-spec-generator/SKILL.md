@@ -22,6 +22,8 @@ When adding a new ESP32 board or module to the project, or when vendor documenta
 - Board/module name and variant (e.g. "Adafruit HUZZAH32 – ESP32 Feather v2")
 
 ## Workflow (follow exactly)
+MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before doing anything else.
+
 1. Parse the provided vendor documentation (datasheet, product page, or schematic).
 2. Extract and normalise: full GPIO pinout, peripheral assignments (I2C, SPI, UART, PWM, ADC, DAC, touch), power supply rails and limits, flash/PSRAM sizes and interface speeds, antenna type, and any reserved or strapping pins.
 3. Cross-reference against `shared-specs/esp-idf-version.md` for any platform-level constraints.

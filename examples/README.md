@@ -6,13 +6,13 @@
 
 # examples/
 
-Eight progressive ESP32 examples, each fully generated from its `FunctionalSpec.md` and `CodingSpec.md` by the **esp32-sdd-full-project-generator** skill. They are ordered by complexity — start with `01-blinky-huzzah32` and work forward.
+Eight progressive ESP32 examples, each fully generated from its `FunctionalSpec.md` and `CodingSpec.md` by the **esp32-sdd-full-project-generator** skill. They are ordered by complexity — start with `01-blinky` and work forward.
 
 ## Catalog
 
 | # | Example | Core Concept | Key ESP32 Hardware Feature |
 |---|---|---|---|
-| 01 | [blinky-huzzah32](01-blinky-huzzah32/) | Baseline project structure | LEDC PWM breathing LED |
+| 01 | [blinky](01-blinky/) | Baseline project structure, multi-board | LEDC PWM breathing LED |
 | 02 | [deep-sleep-timer-node](02-deep-sleep-timer-node/) | RTC wakeup + NVS persistence | Deep sleep timer wakeup |
 | 03 | [deep-sleep-bme280-mqtt](03-deep-sleep-bme280-mqtt/) | Real IoT sensor node | BME280 + Wi-Fi + MQTT |
 | 04 | [hardware-aes-secure-storage](04-hardware-aes-secure-storage/) | Crypto accelerator | AES-256 hardware engine |
@@ -44,7 +44,7 @@ examples/<kebab-name>/
 ### Command Line
 
 ```sh
-cd examples/01-blinky-huzzah32
+cd examples/01-blinky
 idf.py set-target esp32
 idf.py build flash monitor
 ```
@@ -55,7 +55,7 @@ Replace `esp32` with `esp32s2`, `esp32s3`, or `esp32c3` as appropriate for your 
 
 Each example folder is a **complete, standalone ESP-IDF project**. For the best experience:
 
-1. **File → Open Folder…** and select the specific example folder (e.g. `examples/01-blinky-huzzah32/`)
+1. **File → Open Folder…** and select the specific example folder (e.g. `examples/01-blinky/`)
 2. The ESP-IDF Extension auto-detects the project and enables Build / Flash / Monitor / Debug from the commands palette.
 
 > Do **not** open the repository root as your active workspace when developing an example — this creates a multi-root workspace that confuses the ESP-IDF Extension. Open the entire repository only for browsing specs.
@@ -65,6 +65,7 @@ See [docs/guides/using-with-ai-agents.md](../docs/guides/using-with-ai-agents.md
 ## Generating a New Example
 
 1. Create the example folder and its `specs/` subdirectory.
+   > Need to add a new board first? See [docs/guides/creating-new-board-specs.md](../docs/guides/creating-new-board-specs.md) for the full walkthrough.
 2. Create spec files (say: **"Activate esp32-sdd-functional-spec-creator skill"**) — output goes in `specs/FunctionalSpec.md`.
 3. Add `specs/CodingSpec.md`.
 4. Say: **"Activate esp32-sdd-full-project-generator skill"**

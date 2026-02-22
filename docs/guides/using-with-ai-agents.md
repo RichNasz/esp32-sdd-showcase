@@ -8,6 +8,21 @@
 
 This guide covers how to use the ESP32 SDD Showcase skills with Claude Code and other AI agents. Skills are **project-local**: they live inside `.claude/skills/` in this repository and require no global installation.
 
+## Institutional Memory — Read This First
+
+> **Every AI agent working in this repository must read [`shared-specs/AIGenLessonsLearned.md`](../../shared-specs/AIGenLessonsLearned.md) before generating or modifying any file.**
+
+This file is the gold standard institutional memory of the project. It contains:
+
+- **Core rules** that must never be violated (no hand-editing generated files, always use board-specs for GPIO, etc.)
+- **Key lessons** distilled from real AI generation sessions (Feb 2026)
+- **Debugging workflow** for when something goes wrong (improve the spec; never patch generated code)
+- **A template** for adding new lessons as the project grows
+
+All four primary skills (`esp32-sdd-full-project-generator`, `esp32-sdd-documentation-generator`, `esp32-board-spec-generator`, `esp32-sdd-functional-spec-creator`) enforce reading this file as their mandatory first step.
+
+---
+
 ## Claude Code Setup
 
 ### 1. Clone the repository
@@ -43,6 +58,7 @@ Claude Code loads the skill's `SKILL.md` workflow and follows it step by step.
 | `esp32-deep-sleep-engineer` | Designs sleep configurations and power budgets |
 | `esp32-hardware-crypto-configurer` | Configures hardware AES, secure boot, flash encryption |
 | `esp32-sdd-documentation-generator` | Regenerates all documentation from specs |
+| `esp32-sdd-project-validator` | Validates any example folder against the permanent locked structure |
 
 Full details: [skills/README.md](../../skills/README.md)
 
@@ -79,7 +95,7 @@ Each example folder in this repository is a **complete, standalone ESP-IDF proje
 **Recommended workflow (for development):**
 1. In VS Code or Cursor, choose **File → Open Folder…**
 2. Navigate to and open **only the specific example folder**, for example:
-   - `examples/01-blinky-huzzah32/`
+   - `examples/01-blinky/`
    - `examples/03-deep-sleep-bme280-mqtt/`
    etc.
 
@@ -113,4 +129,7 @@ The skills do not depend on any Claude-specific APIs — they are prompts and st
 : Do not edit the generated file. Instead, update the relevant spec in `specs/` or `examples/*/FunctionalSpec.md` and reactivate the skill.
 
 **Unsure which skill to use**
-: See [docs/workflows/README.md](../workflows/README.md) for the complete decision tree.
+: See the `docs/workflows/` section for the complete decision tree.
+
+**Want to verify a generated example is structurally correct**
+: Say "Activate esp32-sdd-project-validator skill" — it runs 13 checks against the permanent locked structure and reports PASS/FAIL for each.

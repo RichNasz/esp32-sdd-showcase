@@ -40,3 +40,5 @@ Each board spec file includes:
 3. The skill writes `board-specs/<vendor>/<board-name>.md` automatically.
 
 > Do not edit board-spec files by hand — they are fully agent-generated and will be overwritten on the next run.
+
+For a detailed walkthrough — including what facts to pre-verify, best practices, and a live example using the Seeed XIAO ESP32S3 — see **[docs/guides/creating-new-board-specs.md](../docs/guides/creating-new-board-specs.md)**.

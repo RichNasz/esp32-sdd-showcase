@@ -12,8 +12,11 @@ keywords: sdd, esp32, documentation, agent-generated, docs-folder
 Any time specs/ changes or you add examples/boards.
 
 ## Workflow (follow exactly)
+MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before doing anything else.
+
 1. Read all files in specs/
 2. Generate minimal root README.md + CONTRIBUTING.md
 3. Generate full docs/ folder + all example READMEs + board-specs/README.md + skills/README.md + etc.
+   - NEVER generate or place files inside `.github/workflows/` — this directory is off-limits.
 4. Add the standard agent-generated header to every output file.
 5. End with "All documentation is now in sync."
