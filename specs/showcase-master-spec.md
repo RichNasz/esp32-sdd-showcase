@@ -10,5 +10,8 @@
 07-esp-now-low-power-mesh – Wi-Fi-free mesh  
 08-capacitive-touch-wakeup – touch interfaces
 
+## Example Directory Structure
+See `specs/example-project-structure-spec.md` for the permanent, immutable layout every example must follow.
+
 ## Skills
 esp32-board-spec-generator, esp32-deep-sleep-engineer, esp32-hardware-crypto-configurer, esp32-sdd-full-project-generator, esp32-sdd-documentation-generator, esp32-sdd-functional-spec-creator

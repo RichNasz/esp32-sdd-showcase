@@ -16,4 +16,4 @@ Any time specs/ changes or you add examples/boards.
 2. Generate minimal root README.md + CONTRIBUTING.md
 3. Generate full docs/ folder + all example READMEs + board-specs/README.md + skills/README.md + etc.
 4. Add the standard agent-generated header to every output file.
-5. End with “All documentation is now in sync.”
+5. End with "All documentation is now in sync."

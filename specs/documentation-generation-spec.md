@@ -10,3 +10,4 @@ This file is the single source of truth for ALL Markdown documentation.
 - Every generated .md file must carry the standard agent-generated header.
 - Root README.md must stay concise and link prominently to docs/README.md.
 - Tone: professional, precise, enthusiastic, community-focused.
+- Every generated file that describes or depicts example directory layout must match `specs/example-project-structure-spec.md` exactly.
