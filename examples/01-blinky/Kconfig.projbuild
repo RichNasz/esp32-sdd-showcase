@@ -1,0 +1,10 @@
+choice BOARD_SELECT
+    prompt "Target board"
+    default BOARD_ADAFRUIT_HUZZAH32
+
+    config BOARD_ADAFRUIT_HUZZAH32
+        bool "Adafruit HUZZAH32 (ESP32 Feather)"
+
+    config BOARD_SEEED_XIAO_ESP32S3
+        bool "Seeed XIAO ESP32S3"
+endchoice
