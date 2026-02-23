@@ -8,18 +8,20 @@
 
 Eight progressive ESP32 examples, each fully generated from its `FunctionalSpec.md` and `CodingSpec.md` by the **esp32-sdd-full-project-generator** skill. They are ordered by complexity — start with `blinky` and work forward.
 
-## Catalog
+## Learning Progression
 
-| # | Example | Core Concept | Key ESP32 Hardware Feature |
-|---|---|---|---|
-| 1 | [blinky](blinky/) | Baseline project structure, multi-board | LEDC PWM breathing LED |
-| 2 | [deep-sleep-timer-node](deep-sleep-timer-node/) | RTC wakeup + NVS persistence | Deep sleep timer wakeup |
-| 3 | [deep-sleep-bme280-mqtt-sensor](deep-sleep-bme280-mqtt-sensor/) | Real IoT sensor node | BME280 + Wi-Fi + MQTT |
-| 4 | [hardware-aes-secure-storage](hardware-aes-secure-storage/) | Crypto accelerator | AES-256 hardware engine |
-| 5 | [ble-beacon-deep-sleep](ble-beacon-deep-sleep/) | Multi-year battery life | BLE advertising + deep sleep |
-| 6 | [secure-ota-https](secure-ota-https/) | Signed production updates | HTTPS OTA + signature verify |
-| 7 | [esp-now-low-power-mesh](esp-now-low-power-mesh/) | Wi-Fi-free mesh networking | ESP-NOW + power management |
-| 8 | [capacitive-touch-wakeup](capacitive-touch-wakeup/) | Touch-driven interfaces | Touch sensor wakeup |
+Start at example 1 and work forward — each example introduces new hardware features and builds on patterns from the previous one.
+
+| # | Example | What You Learn | Key ESP32-S3 Feature | Complexity |
+|---|---|---|---|---|
+| 1 | [blinky](blinky/) | SDD pipeline, LEDC PWM, multi-board Kconfig | Hardware PWM timer | ★☆☆☆☆ |
+| 2 | [deep-sleep-timer-node](deep-sleep-timer-node/) | Deep sleep, RTC timer wakeup, RTC_DATA_ATTR | Deep sleep + RTC memory | ★★☆☆☆ |
+| 3 | [deep-sleep-bme280-mqtt-sensor](deep-sleep-bme280-mqtt-sensor/) | I2C sensor, Wi-Fi STA, MQTT publish, duty-cycled sleep | I2C master + Wi-Fi + MQTT | ★★★☆☆ |
+| 4 | [hardware-aes-secure-storage](hardware-aes-secure-storage/) | Hardware AES-256, NVS encrypted blobs, secure API design | mbedTLS hardware AES accelerator | ★★★☆☆ |
+| 5 | [ble-beacon-deep-sleep](ble-beacon-deep-sleep/) | NimBLE advertising, duty-cycled BLE, ext0 wakeup | BLE + deep sleep + ext0 | ★★★★☆ |
+| 6 | [secure-ota-https](secure-ota-https/) | HTTPS OTA, TLS cert pinning, rollback protection | esp_https_ota + bootloader rollback | ★★★★☆ |
+| 7 | [esp-now-low-power-mesh](esp-now-low-power-mesh/) | ESP-NOW peer comms, dual-role firmware, mesh patterns | ESP-NOW + power management | ★★★★☆ |
+| 8 | [capacitive-touch-wakeup](capacitive-touch-wakeup/) | Touch sensor calibration, touch wakeup from deep sleep | Capacitive touch peripheral | ★★★★★ |
 
 ## Example Structure
 
@@ -74,4 +76,4 @@ See [docs/guides/using-with-ai-agents.md](../docs/guides/using-with-ai-agents.md
 3. Add `specs/CodingSpec.md`.
 4. Say: **"Activate esp32-sdd-full-project-generator skill"**
 
-> `specs/FunctionalSpec.md` and `specs/CodingSpec.md` are the only files humans write. Everything else is agent-generated and must not be edited by hand.
+> `specs/FunctionalSpec.md`, `specs/CodingSpec.md`, and `specs/TestSpec.md` are the only files humans write. Everything else is agent-generated and must not be edited by hand.
