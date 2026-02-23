@@ -1,0 +1,20 @@
+cff-version: "1.2.0"
+message: "If you use or adapt this SDD methodology, please cite it."
+title: "ESP32 SDD Showcase"
+authors:
+  - family-names: Naszcyniec
+    given-names: Richard
+version: "0.1.0"
+date-released: "2026-02-23"
+license: MIT
+repository-code: "https://github.com/RichNasz/esp32-sdd-showcase"
+abstract: >
+  A Spec-Driven Development showcase for ESP32 / ESP-IDF demonstrating
+  100% AI-generated firmware from human-authored specifications.
+keywords:
+  - esp32
+  - esp-idf
+  - spec-driven-development
+  - ai-generated
+  - claude-code
+  - embedded-systems

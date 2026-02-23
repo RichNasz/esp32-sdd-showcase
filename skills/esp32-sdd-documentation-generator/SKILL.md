@@ -15,7 +15,15 @@ Any time specs/ changes or you add examples/boards.
 MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before doing anything else.
 
 1. Read all files in specs/ (including the updated example-project-structure-spec.md and documentation-generation-spec.md).
-2. Generate minimal root README.md + CONTRIBUTING.md.
+2. Generate the following files per documentation-generation-spec.md:
+   - README.md (full OSS-standard structure — see Root README.md Required Sections in the spec)
+   - CONTRIBUTING.md
+   - CODE_OF_CONDUCT.md (source content from contributing-spec.md)
+   - SECURITY.md (source content from contributing-spec.md)
+   - .github/ISSUE_TEMPLATE/spec-improvement.md
+   - .github/ISSUE_TEMPLATE/bug-report.md
+   - .github/PULL_REQUEST_TEMPLATE.md
+   NEVER generate anything inside `.github/workflows/` — this directory is off-limits.
 3. Generate full docs/ folder + all example READMEs + board-specs/README.md + skills/README.md + etc.
    - NEVER generate or place files inside `.github/workflows/` — this directory is off-limits.
 4. For each example README.md, check whether `examples/<name>/specs/TestSpec.md` exists.

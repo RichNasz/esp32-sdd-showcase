@@ -16,6 +16,5 @@ Thumbs.db
 .claude/settings.local.json
 .cache/
 
-# Claude Code internal files - do not commit
-.claude/CLAUDE.md
+# Claude Code user-local settings - do not commit
 .claude/settings.local.json
