@@ -86,7 +86,7 @@ The typical SDD cycle when working with an AI agent:
 
 Always modify specs, then regenerate. If something looks wrong in a generated file, fix the spec and rerun the skill.
 
-Every generated example must follow the permanently locked directory layout defined in `specs/example-project-structure-spec.md` — human-authored files live in `specs/`, all other files are agent-generated.
+Every generated example must follow the permanently locked directory layout defined in `specs/example-project-structure-spec.md` — human-authored files (`FunctionalSpec.md`, `CodingSpec.md`, `TestSpec.md`) live in `specs/`, all other files are agent-generated.
 
 ## Working with VS Code / Cursor + Official ESP-IDF Extension
 

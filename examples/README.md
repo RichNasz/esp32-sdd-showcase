@@ -27,7 +27,10 @@ Every example folder follows this exact, permanently locked layout (see `specs/e
 
 ```
 examples/<kebab-name>/
-├── specs/                          ← Human-only (FunctionalSpec.md + CodingSpec.md)
+├── specs/                          ← Human-only (FunctionalSpec.md + CodingSpec.md + TestSpec.md)
+│   ├── FunctionalSpec.md
+│   ├── CodingSpec.md
+│   └── TestSpec.md                 ← Human-written testing requirements
 ├── main/                           ← Official ESP-IDF main component (100% agent-generated)
 │   ├── main.c
 │   ├── CMakeLists.txt
@@ -35,7 +38,7 @@ examples/<kebab-name>/
 ├── CMakeLists.txt                  ← Root CMakeLists.txt (generated)
 ├── sdkconfig.defaults              ← ESP-IDF config (generated)
 ├── idf_component.yml               ← Dependencies (generated when needed)
-├── README.md                       ← Generated
+├── README.md                       ← Generated (includes Testing section from TestSpec.md)
 ├── .gitignore                      ← Generated
 └── build/                          ← gitignored
 ```

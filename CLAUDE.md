@@ -10,7 +10,7 @@ A **Spec-Driven Development (SDD)** showcase for ESP32 / ESP-IDF. The strict rul
 
 | Category | Locations | Rule |
 |---|---|---|
-| **Human-authored** | `specs/`, `shared-specs/`, `examples/*/FunctionalSpec.md`, `examples/*/CodingSpec.md` | Edit freely |
+| **Human-authored** | `specs/`, `shared-specs/`, `examples/*/FunctionalSpec.md`, `examples/*/CodingSpec.md`, `examples/*/TestSpec.md` | Edit freely |
 | **Agent-generated** | Everything else (all `README.md`, all C source, `CMakeLists.txt`, `sdkconfig.defaults`, `skills/*/SKILL.md`, `board-specs/`) | Never edit by hand — regenerate |
 
 ## Skills (invoke by name in Claude Code)
@@ -52,7 +52,7 @@ templates/          ← structural templates used by skills during spec instanti
 
 ## Workflow Summary
 
-1. **New example**: edit `specs/showcase-master-spec.md` → activate `esp32-sdd-functional-spec-creator` → add `CodingSpec.md` → activate `esp32-sdd-full-project-generator`
+1. **New example**: edit `specs/showcase-master-spec.md` → activate `esp32-sdd-functional-spec-creator` → add `CodingSpec.md` + `TestSpec.md` → activate `esp32-sdd-full-project-generator`
 2. **Change specs**: edit file in `specs/` or `shared-specs/` → activate `esp32-sdd-documentation-generator`
 3. **New board**: provide datasheet URL → activate `esp32-board-spec-generator`
 

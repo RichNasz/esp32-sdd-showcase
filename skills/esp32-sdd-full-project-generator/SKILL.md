@@ -23,24 +23,27 @@ Every generated example **must** match this exact structure, defined in `specs/e
 
 ```
 examples/<kebab-name>/
-├── specs/                          ← Human-only (FunctionalSpec.md + CodingSpec.md)
+├── specs/                          ← Human-only (FunctionalSpec.md + CodingSpec.md + TestSpec.md)
+│   ├── FunctionalSpec.md
+│   ├── CodingSpec.md
+│   └── TestSpec.md                 ← Human-written testing requirements
 ├── main/                           ← Official ESP-IDF main component (100% agent-generated)
 │   ├── main.c
 │   └── CMakeLists.txt
 ├── CMakeLists.txt                  ← Root CMakeLists.txt (generated)
 ├── sdkconfig.defaults              ← ESP-IDF config (generated)
 ├── idf_component.yml               ← Dependencies (generated when needed)
-├── README.md                       ← Generated
+├── README.md                       ← Generated (includes Testing section from TestSpec.md)
 ├── .gitignore                      ← Generated
 └── build/                          ← gitignored
 ```
 
-Do not create files outside this layout. Do not place `FunctionalSpec.md` or `CodingSpec.md` at the example root — they belong in `specs/`. Do not add extra top-level files unless they are in this list.
+Do not create files outside this layout. Do not place spec files at the example root — they belong in `specs/`. Do not add extra top-level files unless they are in this list.
 
 ## Workflow (follow exactly)
 MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before doing anything else.
 
-1. Read `examples/<name>/specs/FunctionalSpec.md` and `examples/<name>/specs/CodingSpec.md`.
+1. Read `examples/<name>/specs/FunctionalSpec.md`, `examples/<name>/specs/CodingSpec.md`, and `examples/<name>/specs/TestSpec.md` (if it exists).
 2. Read the relevant `board-specs/<vendor>/<board>.md` file identified in the FunctionalSpec.
 3. Read any `shared-specs/` files referenced in either spec.
 4. Generate the full project tree using the mandatory layout above:
@@ -76,6 +79,7 @@ MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before do
 
    - **Expected Serial Output** — representative log lines showing successful operation
    - **Key Concepts** — bullet list of the main ESP-IDF APIs and patterns demonstrated
-   - **Spec Files** — links to `specs/FunctionalSpec.md` and `specs/CodingSpec.md`
+   - **Testing** — generated from `specs/TestSpec.md` if present; omit section entirely if TestSpec.md is absent. Automated tests first, manual tests (labelled "Manual — hardware required") only for steps that cannot be automated. Numbered, beginner-friendly steps.
+   - **Spec Files** — links to `specs/FunctionalSpec.md`, `specs/CodingSpec.md`, and `specs/TestSpec.md` (if present)
 
 9. Output: "Project generated. Build with `idf.py build` from `examples/<name>/`."

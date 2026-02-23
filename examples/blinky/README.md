@@ -89,10 +89,69 @@ The LED breathes smoothly through a full 4-second cycle (2 s up, 2 s down), inde
 - `LED_ACTIVE_LOW` / `DUTY_ON` / `DUTY_OFF` — active LED polarity abstraction
 - `CONFIG_ESP_CONSOLE_USB_CDC=y` — required for serial output on XIAO (native USB, no UART bridge)
 
+## Testing
+
+Testing philosophy: automated first, manual only when hardware observation is unavoidable.
+
+### Automated Tests
+
+1. **Zero-warning build — HUZZAH32 (T-A1)**
+
+   ```sh
+   cd examples/blinky
+   idf.py set-target esp32 && idf.py build
+   ```
+
+   Pass: exit code 0, zero compiler warnings.
+
+2. **Zero-warning build — XIAO ESP32S3 (T-A2)**
+
+   ```sh
+   idf.py set-target esp32s3 && idf.py build
+   ```
+
+   Pass: exit code 0, zero compiler warnings.
+
+3. **Binary size check (T-A3)**
+
+   ```sh
+   idf.py size | grep "Total binary size"
+   ```
+
+   Pass: reported size < 1 MB.
+
+4. **Wokwi simulation — HUZZAH32 (T-A4)**
+
+   Requires Wokwi CLI (`curl -L https://wokwi.com/ci/install.sh | sh`) and a `wokwi.toml` + `diagram.json` at the example root.
+
+   ```sh
+   wokwi-cli --timeout 10000 --expect "Breathing period" .
+   ```
+
+   Pass: `Breathing period` appears in simulated serial output within 10 seconds.
+
+### Manual — hardware required
+
+*The following steps require physical hardware because smooth optical fade quality and active-LOW polarity inversion cannot be fully verified by simulation.*
+
+1. **LED breathing — HUZZAH32 (T-M1)**
+   Flash with `idf.py set-target esp32 && idf.py build flash`.
+   Observe the red LED (GPIO 13): confirm smooth fade from off → fully on → off over ~4 seconds, repeating continuously with no visible steps or flicker.
+
+2. **LED breathing — XIAO ESP32S3 (T-M2)**
+   Flash with `idf.py set-target esp32s3 && idf.py build flash -p /dev/cu.usbmodem*`.
+   Observe the amber LED (GPIO 21): confirm the first fade is dark → bright (active-LOW polarity correct), then smooth continuous breathing. Check serial output shows `Fade up` on first cycle, then alternating `Fade up` / `Fade down`.
+
+3. **Board switch regression (T-M3)**
+   Repeat T-M1 and T-M2 after switching the active board in `specs/CodingSpec.md` and regenerating. Both boards must pass on every switch.
+
+Full test details: [specs/TestSpec.md](specs/TestSpec.md)
+
 ## Spec Files
 
 - [FunctionalSpec.md](specs/FunctionalSpec.md)
 - [CodingSpec.md](specs/CodingSpec.md)
+- [TestSpec.md](specs/TestSpec.md)
 
 ## Board Specs
 

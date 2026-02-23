@@ -51,9 +51,9 @@ Verify that every required path exists (relative to the example root):
 **FAIL** if any Required file is absent.
 
 ### CHECK-02 — specs/ directory contains only human-authored files
-`specs/` must contain exactly `FunctionalSpec.md` and `CodingSpec.md`. No other files, no subdirectories.
+`specs/` must contain `FunctionalSpec.md` and `CodingSpec.md`. `TestSpec.md` is also allowed (and encouraged). No other files, no subdirectories.
 
-**FAIL** if any extra file or directory is found inside `specs/`.
+**FAIL** if any file other than `FunctionalSpec.md`, `CodingSpec.md`, or `TestSpec.md` is found inside `specs/`.
 
 ### CHECK-03 — No generated files have been placed inside specs/
 `specs/FunctionalSpec.md` and `specs/CodingSpec.md` must NOT start with the agent-generated comment header (`<!-- AGENT-GENERATED` or `/* AGENT-GENERATED`).
