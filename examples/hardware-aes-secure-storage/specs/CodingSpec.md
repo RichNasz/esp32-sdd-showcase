@@ -8,92 +8,56 @@
 
 # Coding Specification — Hardware AES Secure Storage
 
-## Hardware AES Configuration
+## Architecture
 
-- Enable hardware AES via sdkconfig.defaults: `CONFIG_MBEDTLS_HARDWARE_AES=y`
-- Use mbedTLS `mbedtls_aes_context` for all AES operations.
-- Algorithm: AES-256-CBC.
-- Key size: 32 bytes (256 bits).
-- IV size: 16 bytes; generate fresh IV with `esp_fill_random()` on every `secure_write` call.
-- Store IV prepended to ciphertext in NVS (format: [16 bytes IV][N bytes ciphertext]).
-- Padding: PKCS#7 — pad plaintext to next 16-byte boundary before encryption.
+Two-layer design. A reusable secure_storage module (separate .c/.h pair) encapsulates all
+AES crypto and NVS operations behind a clean read/write API. App_main uses this module to
+run a round-trip self-test and a throughput benchmark — it never calls mbedTLS or NVS
+directly. This separation keeps the demo concise and makes the storage API reusable.
 
-## API Design
+## Key Constraints
 
-```c
-/* secure_storage.h */
-esp_err_t secure_storage_init(void);          // init NVS, load or generate AES key
-esp_err_t secure_write(const char *key, const void *data, size_t len);
-esp_err_t secure_read(const char *key, void *data, size_t *len);
-```
+- Algorithm: AES-256-CBC via mbedTLS with hardware acceleration enabled
+  (CONFIG_MBEDTLS_HARDWARE_AES=y). The hardware accelerator is the primary point of this
+  example; the sdkconfig must not omit this setting.
+- IV: a fresh random IV must be generated for every write operation. The IV is stored
+  prepended to the ciphertext in NVS. IV reuse with the same key breaks CBC confidentiality.
+- Key: generated once on first boot from a CSPRNG, stored in NVS. The module must detect
+  whether a key already exists and load it rather than regenerate.
+- Padding: plaintext must be padded to the AES block boundary before encryption. The module
+  must handle inputs of any length correctly.
+- Benchmark: encrypt 64 KB of random data and log throughput in MB/s. Hardware AES on
+  ESP32-S3 should achieve at least 5× the throughput of a software-only build.
 
-- Implement in `main/secure_storage.c` + `main/secure_storage.h`.
-- `secure_storage_init`: open NVS namespace `"sec_store"`; load key from key `"aes_key"`, or generate and save if absent.
-- `secure_write`: encrypt data with fresh IV; write IV+ciphertext blob to NVS under `key`.
-- `secure_read`: read blob from NVS; split IV from ciphertext; decrypt; write to caller buffer.
-- Return `ESP_ERR_NOT_FOUND` if key does not exist in NVS.
-- Return `ESP_ERR_INVALID_SIZE` if caller buffer is too small.
+## Preferred Libraries and APIs
 
-## NVS Layout
+Use mbedTLS (ESP-IDF built-in) for all AES operations. No external crypto library is needed.
+Use NVS for key and blob storage. The secure_storage module should return esp_err_t codes
+so callers never need to understand mbedTLS return values.
 
-- Namespace: `"sec_store"`
-- Key `"aes_key"`: 32-byte AES key (blob).
-- Key `<user key>`: IV+ciphertext blob (blob, variable length).
+## Non-Functional Requirements
 
-## Self-Test (app_main)
+- The API must return meaningful error codes (key not found, buffer too small) without
+  exposing crypto internals to the caller.
+- mbedTLS functions return integers, not esp_err_t. All mbedTLS errors must be caught,
+  logged, and mapped to appropriate esp_err_t values before propagating.
+- Self-test failure must be reported visually (LED pattern) and over serial, but must not
+  abort the device. An example should not crash on a test bench.
+- The README must explicitly note that this example demonstrates the hardware crypto API,
+  not production key lifecycle management. Production systems should use eFuse key binding
+  or flash encryption, not plaintext NVS key storage.
 
-1. Call `secure_storage_init()`.
-2. `secure_write("test_key", "Hello, SDD!", 11)`.
-3. `secure_read("test_key", buf, &len)`.
-4. `memcmp(buf, "Hello, SDD!", 11)` — PASS or FAIL.
-5. Log result; blink LED once on PASS, three times on FAIL.
+## Gotchas
 
-## Throughput Benchmark
+- IV uniqueness is a hard security requirement for AES-CBC. Never reuse an IV with the
+  same key, even across reboots. Generating a fresh IV per write from a CSPRNG is correct.
+- mbedTLS error codes are negative integers and are not compatible with ESP-IDF error
+  logging macros. Use mbedtls_strerror() to produce human-readable error descriptions.
+- Hardware AES operates transparently through the mbedTLS API when
+  CONFIG_MBEDTLS_HARDWARE_AES=y. The API call sites do not change — only the sdkconfig
+  enables the accelerator.
 
-- Allocate 64 KB buffer on heap; fill with `esp_fill_random()`.
-- Record `esp_timer_get_time()` before and after encrypting 64 KB with `mbedtls_aes_crypt_cbc`.
-- Log: `ESP_LOGI(TAG, "HW AES-256-CBC: %.2f MB/s", throughput_mbs)`.
+## File Layout (non-standard files)
 
-## LED Feedback
-
-- GPIO 21, active LOW.
-- PASS: 1 blink (200 ms on, 200 ms off).
-- FAIL: 3 rapid blinks (100 ms on, 100 ms off × 3).
-- `gpio_config_t` with `GPIO_MODE_OUTPUT`.
-
-## Logging
-
-- Tag: `"aes-demo"`
-- Init: `ESP_LOGI(TAG, "AES key %s NVS", key_was_loaded ? "loaded from" : "generated, saved to")`
-- Self-test: `ESP_LOGI(TAG, "Self-test: %s", passed ? "PASS" : "FAIL")`
-- Benchmark: log throughput in MB/s.
-
-## sdkconfig.defaults
-
-```
-CONFIG_MBEDTLS_HARDWARE_AES=y
-CONFIG_ESP_CONSOLE_USB_CDC=y
-```
-
-## Error Handling
-
-- `ESP_ERROR_CHECK` on all NVS and GPIO calls.
-- mbedTLS functions return int; check for non-zero return and log error with `mbedtls_strerror`.
-- On self-test FAIL: log error but do not abort — continue to next iteration (example should not crash on demo boards).
-
-## Agent-Generated Headers
-
-- `.c`/`.h` files: `/* AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator */`
-- CMakeLists.txt, sdkconfig.defaults, .gitignore: `# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator`
-- README.md: full HTML comment block.
-
-## File Layout
-
-- main/main.c
-- main/secure_storage.c
-- main/secure_storage.h
-- main/CMakeLists.txt
-- CMakeLists.txt
-- sdkconfig.defaults
-- .gitignore
-- README.md
+- main/secure_storage.c — AES + NVS implementation
+- main/secure_storage.h — public API header

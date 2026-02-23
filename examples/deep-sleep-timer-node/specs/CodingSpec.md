@@ -8,64 +8,41 @@
 
 # Coding Specification — Deep Sleep Timer Node
 
-## Deep Sleep Configuration
+## Architecture
 
-- Wakeup source: `esp_sleep_enable_timer_wakeup(SLEEP_DURATION_US)`.
-- `#define SLEEP_SEC       15`
-- `#define SLEEP_DURATION_US  ((uint64_t)SLEEP_SEC * 1000000ULL)`
-- Enter sleep: `esp_deep_sleep_start()` — no return.
-- On wake: `esp_sleep_get_wakeup_cause()` → branch on `ESP_SLEEP_WAKEUP_TIMER` vs `ESP_SLEEP_WAKEUP_UNDEFINED` (first boot / power-on reset).
+Minimal single-shot firmware. App_main runs once per wake cycle: increment the boot counter,
+detect wakeup cause, log status, blink the LED, then immediately enter deep sleep. There
+are no FreeRTOS tasks beyond app_main's implicit task, no event loops, and no persistent
+connections. The entire active window is synchronous and linear.
 
-## RTC Memory — Boot Counter
+## Key Constraints
 
-- `static RTC_DATA_ATTR uint32_t boot_count = 0;`
-- Increment `boot_count` as the **first statement** in `app_main`, before logging.
-- RTC_DATA_ATTR survives deep sleep but resets on power-cycle or ULP wakeup power-off.
-- No NVS required; this example demonstrates the simplest persistence mechanism.
+- Sleep duration: 15 seconds.
+- Active window budget: 200 ms maximum. This includes ESP-IDF boot time, LED blink, logging,
+  and serial flush. Anything beyond 200 ms active time indicates a regression.
+- Persistence: RTC_DATA_ATTR is the correct mechanism for the boot counter. NVS is
+  unnecessary overhead for a single integer that may reset on power-cycle.
+- The boot counter must be incremented as the first action in app_main, before any
+  conditional branching or logging, so every wake cycle produces an accurate count.
 
-## LED Feedback
+## Preferred Libraries and APIs
 
-- LED GPIO: 21 (active LOW, per board-spec).
-- On each wake: `gpio_hold_dis(GPIO_NUM_21)` → drive LOW for 100 ms → drive HIGH.
-- Use `gpio_config_t` with `GPIO_MODE_OUTPUT` / `GPIO_PULLUP_ENABLE`.
-- Do NOT use LEDC; simple `gpio_set_level` is sufficient.
-- Hold not required before sleep (LED stays HIGH = off, no need to hold).
+Use esp_sleep for wakeup configuration and esp_sleep_get_wakeup_cause() to distinguish
+first boot from timer wakeup. Use gpio for LED feedback — LEDC is unnecessary overhead
+for a single binary blink.
 
-## Logging
+## Non-Functional Requirements
 
-- Tag: `"sleep-node"`
-- First boot: `ESP_LOGI(TAG, "First boot — counter initialized")`
-- Timer wake: `ESP_LOGI(TAG, "Wake #%lu | TIMER wakeup | sleeping for %d s", (unsigned long)boot_count, SLEEP_SEC)`
-- Unknown cause: `ESP_LOGW(TAG, "Wake #%lu | unknown wakeup cause (%d)", (unsigned long)boot_count, cause)`
+- Wakeup cause must be checked on every boot. First power-on and timer wakeup are distinct
+  states and should produce distinct log messages.
+- Unrecognised wakeup causes must log a warning and proceed to sleep — never abort. The
+  deep-sleep loop must be robust to unexpected causes.
+- A brief delay is needed after app_main entry for USB-CDC to enumerate before the first
+  log line is emitted. This is specific to the XIAO ESP32S3's native USB implementation.
 
-## Timing Budget
+## Gotchas
 
-- LED blink: 100 ms
-- Logging + serial flush: ~50 ms
-- ESP-IDF startup overhead: ~50 ms
-- Total active window target: ≤ 200 ms
-
-## USB-CDC (XIAO ESP32S3)
-
-- `CONFIG_ESP_CONSOLE_USB_CDC=y` in sdkconfig.defaults.
-- Add `vTaskDelay(pdMS_TO_TICKS(100))` after `app_main` entry to allow USB-CDC to enumerate before first log line.
-
-## Error Handling
-
-- Wrap every ESP-IDF call with `ESP_ERROR_CHECK`.
-- If wakeup cause is unrecognised: log WARNING and proceed to sleep (never abort in production deep-sleep loop).
-
-## Agent-Generated Headers
-
-- `.c` files: `/* AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator */`
-- CMakeLists.txt, sdkconfig.defaults, .gitignore: `# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator`
-- README.md: full HTML comment block.
-
-## File Layout
-
-- main/main.c
-- main/CMakeLists.txt
-- CMakeLists.txt
-- sdkconfig.defaults
-- .gitignore
-- README.md
+- gpio_hold_dis() must be called before driving the LED GPIO on each wake. Deep sleep can
+  hold GPIO pad states, and attempting to drive a held pin has no effect.
+- RTC_DATA_ATTR variables survive deep sleep but reset on a full power-cycle or power-on
+  reset. This is expected and correct behaviour; document it in the README.

@@ -26,6 +26,26 @@ examples/<kebab-name>/
 └── build/                          ← gitignored
 ```
 
+## CodingSpec.md — Abstraction Level
+
+CodingSpec.md is high-level technical guidance for the AI model generating the project. It must describe **what** the system should do and **why** — not **how** to implement it.
+
+**Include in CodingSpec.md:**
+- Architecture and component breakdown
+- Key timing, memory, power, and security constraints
+- Preferred libraries and APIs (and the reason for each choice)
+- Non-functional requirements (error recovery philosophy, logging expectations, thread safety)
+- Trade-off decisions (e.g., QoS 0 vs 1, polling vs interrupt-driven)
+- Known gotchas specific to the hardware or ESP-IDF version
+
+**Never include in CodingSpec.md:**
+- Code snippets, `#define` statements, or pseudo-code
+- Specific function signatures or API call sequences
+- Exact log message strings
+- Numbered step-by-step implementation instructions
+
+**Philosophy:** "The model we use today is the worst model we will ever use." A high-level spec will benefit from better future models. A low-level spec just replicates code in prose.
+
 ## TestSpec.md — Testing Philosophy
 
 TestSpec.md is the third human-written spec file. It defines testing requirements for the example.

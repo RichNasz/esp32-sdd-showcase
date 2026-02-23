@@ -8,100 +8,58 @@
 
 # Coding Specification — Capacitive Touch Wakeup
 
-## Touch Pad Configuration
+## Architecture
 
-- Touch channel: `TOUCH_PAD_NUM1` (maps to GPIO 1 / D0 on XIAO ESP32S3).
-- `#define TOUCH_PAD   TOUCH_PAD_NUM1`
-- `#define TOUCH_PAD_GPIO  GPIO_NUM_1`
-- `#define CALIB_SAMPLES   50`
-- `#define THRESHOLD_RATIO 0.70f`   // threshold = mean × 0.70
+Single-file firmware with a calibration-then-sleep loop. On first boot and on every timer
+wakeup, the device samples the touch pad multiple times to establish a noise floor, derives a
+threshold from the sample mean, stores the threshold in RTC memory, arms both touch and timer
+wakeup sources, and enters deep sleep. On touch wakeup, calibration is skipped — the stored
+RTC threshold is reapplied directly — the touch counter is incremented, the LED blinks a
+distinct pattern, and the device re-enters deep sleep. Both wakeup sources are always armed
+simultaneously.
 
-Use ESP-IDF Touch Sensor driver (`driver/touch_sensor.h`):
-```c
-touch_pad_init();
-touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
-touch_pad_config(TOUCH_PAD, 0);   // threshold = 0 during calibration
-touch_pad_filter_start(10);       // 10 ms filter period
-```
+## Key Constraints
 
-## Calibration
+- Touch pad: TOUCH_PAD_NUM1 (maps to GPIO 1 on XIAO ESP32S3). This is the only touch-capable
+  pin accessible on the standard XIAO header.
+- Calibration: 50 filtered samples, threshold set to 70% of the sample mean. This ratio
+  distinguishes a real touch from idle noise while accommodating normal environmental variation.
+- Dual wakeup: touch wakeup source and a 20-second backup timer are both armed before sleep.
+  The timer fires when no touch occurs and triggers recalibration on the next cycle.
+- LED feedback: touch wakeup produces a 3-blink pattern; timer wakeup produces a single slow
+  blink. Distinct patterns are the primary visual diagnostic without a serial console.
+- Persistence: touch_count (incremented on touch wakeup only) and rtc_threshold (set at
+  calibration, reused on touch wakeup) must both survive deep sleep via RTC_DATA_ATTR.
 
-On first boot (`ESP_SLEEP_WAKEUP_UNDEFINED`) and every timer wakeup:
-```c
-uint32_t sum = 0;
-for (int i = 0; i < CALIB_SAMPLES; i++) {
-    uint16_t val;
-    touch_pad_read_filtered(TOUCH_PAD, &val);
-    sum += val;
-    vTaskDelay(pdMS_TO_TICKS(10));
-}
-uint32_t mean = sum / CALIB_SAMPLES;
-uint32_t threshold = (uint32_t)(mean * THRESHOLD_RATIO);
-touch_pad_set_thresh(TOUCH_PAD, threshold);
-```
+## Preferred Libraries and APIs
 
-Store `threshold` in `RTC_DATA_ATTR uint32_t rtc_threshold` so it persists to touch wakeup.
+Use the ESP-IDF touch sensor driver (driver/touch_sensor.h). The built-in driver handles
+hardware filter initialization and provides filtered readings that suppress high-frequency
+noise. Direct ADC access bypasses this filter and significantly increases false-trigger rates.
 
-## Deep Sleep Configuration
+Use esp_sleep for wakeup source configuration and esp_sleep_get_touchpad_wakeup_status() to
+identify which pad triggered wakeup. Use esp_sleep_get_wakeup_cause() to distinguish touch
+wakeup from timer wakeup at the top of app_main.
 
-```c
-touch_pad_set_thresh(TOUCH_PAD, rtc_threshold);   // restore from RTC memory
-esp_sleep_enable_touchpad_wakeup();
-esp_sleep_enable_timer_wakeup(20 * 1000000ULL);   // backup timer
-esp_deep_sleep_start();
-```
+## Non-Functional Requirements
 
-On touch wakeup, identify the triggered pad:
-```c
-touch_pad_t pad = esp_sleep_get_touchpad_wakeup_status();
-```
+- If calibration reads fail, the device must fall back to a safe hardcoded threshold rather
+  than aborting. The device must always proceed to deep sleep — calibration failure must never
+  block the sleep cycle.
+- gpio_hold_dis() must be called before driving the LED GPIO on any wake from deep sleep, as
+  the pad state may be held from the previous sleep cycle.
+- USB-CDC requires a brief startup delay at the start of app_main before any logging, specific
+  to the XIAO's native USB implementation.
 
-## RTC Memory
+## Gotchas
 
-```c
-static RTC_DATA_ATTR uint32_t touch_count = 0;
-static RTC_DATA_ATTR uint32_t rtc_threshold = 0;
-```
-
-- `touch_count`: increment only on `ESP_SLEEP_WAKEUP_TOUCHPAD`.
-- `rtc_threshold`: set during calibration, read back on touch wakeup to log.
-
-## LED Feedback
-
-- GPIO 21, active LOW.
-- Touch wakeup: 3 blinks — 200 ms LOW / 200 ms HIGH, repeated 3×.
-- Timer wakeup: 1 slow blink — 500 ms LOW / 500 ms HIGH.
-- `gpio_hold_dis(GPIO_NUM_21)` before driving; restore direction with `gpio_config_t`.
-
-## Logging
-
-- Tag: `"touch-wake"`
-- On calibration: `ESP_LOGI(TAG, "Calibrated: mean=%lu threshold=%lu", mean, threshold)`
-- On touch wake: `ESP_LOGI(TAG, "Touch wake! pad=%d  count=%lu  val≈%lu  thresh=%lu", pad, touch_count, read_val, rtc_threshold)`
-- On timer wake: `ESP_LOGI(TAG, "Timer wake (no touch) — recalibrating")`
-- Before sleep: `ESP_LOGI(TAG, "Sleeping (touch + 20 s timer)")`
-
-## USB-CDC
-
-- `CONFIG_ESP_CONSOLE_USB_CDC=y` in sdkconfig.defaults.
-- `vTaskDelay(pdMS_TO_TICKS(100))` at start of `app_main` for CDC enumeration.
-
-## Error Handling
-
-- `ESP_ERROR_CHECK` on all `touch_pad_*` and sleep configuration calls.
-- If `touch_pad_read_filtered` returns error during calibration: retry up to 3 times before aborting calibration and using a safe default threshold of 200.
-
-## Agent-Generated Headers
-
-- `.c` files: `/* AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator */`
-- CMakeLists.txt, sdkconfig.defaults, .gitignore: `# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator`
-- README.md: full HTML comment block.
-
-## File Layout
-
-- main/main.c
-- main/CMakeLists.txt
-- CMakeLists.txt
-- sdkconfig.defaults
-- .gitignore
-- README.md
+- ESP32-S3 touch sensor raw readings decrease when a finger is present (increased capacitance
+  lengthens charge time, lowering the raw count). The threshold must be set below the idle
+  baseline — not above it. The 70% calibration factor accounts for this inverse relationship.
+- touch_pad_filter_start() must be called before touch_pad_read_filtered(). Calling the
+  filtered read without starting the filter returns stale or zero values.
+- Deep sleep current with touch wakeup enabled on the XIAO ESP32S3 is approximately 130 µA,
+  substantially higher than timer-only deep sleep (~14 µA). This is expected hardware behaviour
+  and must be documented in the README.
+- TOUCH_PAD_NUM1 maps to GPIO 1 on ESP32-S3, but this mapping differs from earlier ESP32
+  variants. Always verify against the board spec for the target chip.

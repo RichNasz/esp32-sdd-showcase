@@ -13,6 +13,10 @@ This file is the single source of truth for ALL Markdown documentation.
 - Every generated file that describes or depicts example directory layout must match `specs/example-project-structure-spec.md` exactly.
 - Never generate files inside `.github/workflows/` — GitHub restricts access to this directory without workflow scope.
 
+## CodingSpec.md Standard
+
+CodingSpec.md is high-level guidance — architecture, constraints, preferred libraries, non-functional requirements, and gotchas. It must never contain code snippets, specific function calls, or step-by-step implementation instructions. When generating or reviewing documentation that describes CodingSpec.md, reflect this standard accurately.
+
 ## Testing Section Generation
 
 Every example README.md must include a **Testing** section generated from `specs/TestSpec.md`.

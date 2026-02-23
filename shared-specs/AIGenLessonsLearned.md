@@ -33,6 +33,14 @@
 4. Regenerate with the full-project-generator skill.
 5. Never manually edit generated code.
 
+## CodingSpec.md Must Be High-Level Guidance (Not Implementation Instructions)
+
+CodingSpec.md describes **what** and **why** — never **how**. It must not contain code snippets, `#define` statements, specific API call sequences, or numbered step-by-step instructions. It should describe architecture, constraints, preferred libraries and the reasoning behind them, non-functional requirements, trade-off decisions, and known gotchas.
+
+The guiding principle: "The model we use today is the worst model we will ever use." A high-level spec benefits from better future models. A low-level spec just duplicates code in prose and locks the implementation to the current generation's idioms.
+
+If you find yourself writing a function call, a struct definition, or a numbered sequence of API calls in CodingSpec.md, stop and reframe it as an architectural constraint or a trade-off decision. (Feb 2026)
+
 ## Template for Adding New Lessons
 When you discover something important:
 - Add it here under "Key Lessons Learned"

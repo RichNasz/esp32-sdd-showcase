@@ -8,114 +8,62 @@
 
 # Coding Specification — Secure OTA via HTTPS
 
-## OTA Flow (app_main sequence)
+## Architecture
 
-1. GPIO 21 init (LED output).
-2. NVS flash init: `nvs_flash_init()`.
-3. Wi-Fi init and connect (wait for `IP_EVENT_STA_GOT_IP`, 30 s timeout).
-4. Check if this is first boot after OTA: `esp_ota_get_running_partition()` vs `esp_ota_get_boot_partition()`.
-   - If running in new OTA slot: call `esp_ota_mark_app_valid_cancel_rollback()` immediately.
-5. Begin HTTPS OTA: `esp_https_ota()` with config struct.
-6. On success: `esp_restart()`.
-7. On failure: log error, fast-blink LED 3×, loop forever (do not silently reboot on error).
+Linear OTA pipeline. App_main performs Wi-Fi association, immediately checks for a pending
+rollback and validates the running image if needed, then initiates the HTTPS OTA download.
+A separate FreeRTOS task drives the LED blink during the download so app_main can block on the
+transfer without losing visual feedback. On success, app_main reboots. On any failure, the
+pipeline halts with a visible error LED pattern and does not reboot silently.
 
-## HTTPS OTA Configuration
+## Key Constraints
 
-```c
-esp_http_client_config_t http_config = {
-    .url            = CONFIG_OTA_SERVER_URL,
-    .cert_pem       = (char *)server_cert_pem_start,
-    .timeout_ms     = 30000,
-    .keep_alive_enable = true,
-};
-esp_https_ota_config_t ota_config = {
-    .http_config = &http_config,
-};
-```
+- Server certificate is embedded at build time from main/server_cert.pem using
+  target_add_binary_data in CMakeLists. This file is a placeholder — operators must replace it
+  with their actual CA certificate before use.
+- Wi-Fi association timeout: 30 seconds before the pipeline is abandoned.
+- HTTPS client timeout: 30 seconds to avoid indefinite blocking on a stalled server connection.
+- Partition table: dual OTA layout (ota_0 + ota_1 + otadata) defined in a custom partitions.csv
+  at the example root. The default ESP-IDF partition table is too small for two OTA app slots.
+- Rollback: CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y must be set. The newly-booted image must
+  call esp_ota_mark_app_valid_cancel_rollback() early in app_main — before any user logic that
+  could fail. Failure to do so causes the bootloader to roll back on the next reboot.
+- All configurable parameters (Wi-Fi credentials, OTA server URL) must be exposed via Kconfig,
+  not hardcoded.
 
-- Server certificate: embed `main/server_cert.pem` using `target_add_binary_data` in `main/CMakeLists.txt`.
-- External symbols: `extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");`
+## Preferred Libraries and APIs
 
-## Partition Table
+Use esp_https_ota for the OTA download. It handles chunked writes to the OTA flash partition,
+HTTPS negotiation, and progress callbacks in a single API call. Implementing this manually via
+esp_ota_write would duplicate logic that esp_https_ota already handles correctly.
 
-- File: `partitions.csv` at example root.
-- Content:
-```csv
-# Name,   Type, SubType, Offset,  Size, Flags
-nvs,      data, nvs,     0x9000,  0x6000,
-otadata,  data, ota,     0xf000,  0x2000,
-ota_0,    app,  ota_0,   0x20000, 0x200000,
-ota_1,    app,  ota_1,   0x220000,0x200000,
-```
-- sdkconfig.defaults: `CONFIG_PARTITION_TABLE_CUSTOM=y`, `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"`.
-- sdkconfig.defaults: `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`.
+Use standard STA Wi-Fi with event loop for network connectivity — the same pattern as the
+deep-sleep-bme280-mqtt-sensor example. No reconnect or roaming logic is needed.
 
-## Wi-Fi
+## Non-Functional Requirements
 
-- Same pattern as deep-sleep-bme280-mqtt-sensor: event loop, `IP_EVENT_STA_GOT_IP`, 30 s timeout.
-- Credentials via `CONFIG_WIFI_SSID` / `CONFIG_WIFI_PASSWORD` in `main/Kconfig.projbuild`.
+- OTA API failures must not trigger abort(). Log the error with esp_err_to_name, blink the
+  error LED pattern, and then loop without rebooting. Silent reboots on persistent OTA failure
+  would create an infinite retry loop if the server is unavailable.
+- Wi-Fi connection timeout must log a clear message and halt execution — do not reboot silently.
+  The operator must be able to observe the failure cause from the serial log.
+- The LED blink during download must run on a separate FreeRTOS task, because app_main blocks
+  on the esp_https_ota call for the full transfer duration.
 
-## Kconfig Options (main/Kconfig.projbuild)
+## Gotchas
 
-```
-config WIFI_SSID
-    string "Wi-Fi SSID"
-    default "myssid"
+- If rollback is enabled but esp_ota_mark_app_valid_cancel_rollback() is never called, the
+  device will roll back on every subsequent reboot even after a successful OTA. This call must
+  be unconditional and must happen before any user logic.
+- The PEM file embedded in the binary must match the CA that signed the OTA server's TLS
+  certificate. For a self-signed server, embed the server's own certificate — not a root CA.
+- Custom partition tables require CONFIG_PARTITION_TABLE_CUSTOM=y and
+  CONFIG_PARTITION_TABLE_CUSTOM_FILENAME pointing to the CSV in sdkconfig.defaults.
+- USB-CDC requires CONFIG_ESP_CONSOLE_USB_CDC=y and a brief startup delay before the first
+  log line, specific to the XIAO's native USB implementation.
 
-config WIFI_PASSWORD
-    string "Wi-Fi Password"
-    default "mypassword"
+## File Layout (non-standard files)
 
-config OTA_SERVER_URL
-    string "OTA Firmware Server URL"
-    default "https://192.168.1.100:8070/firmware.bin"
-```
-
-## LED Feedback
-
-- GPIO 21, active LOW.
-- During download: slow blink 500 ms on / 500 ms off using `vTaskDelay` in a loop.
-- Run LED blink in a separate FreeRTOS task; signal task to stop via `xTaskNotify` when OTA completes or fails.
-- On error: 3× fast blink (100 ms on / 100 ms off), then LED off.
-
-## Logging
-
-- Tag: `"ota"`
-- Wi-Fi connected: `ESP_LOGI(TAG, "IP: " IPSTR, IP2STR(&event->ip_info.ip))`
-- OTA start: `ESP_LOGI(TAG, "Fetching: %s", CONFIG_OTA_SERVER_URL)`
-- OTA complete: `ESP_LOGI(TAG, "OTA done — rebooting")`
-- Rollback cancel: `ESP_LOGI(TAG, "Marked valid — rollback cancelled")`
-- Error: `ESP_LOGE(TAG, "OTA failed: %s", esp_err_to_name(err))`
-
-## Error Handling
-
-- `ESP_ERROR_CHECK` on all init calls.
-- OTA API calls: check return value, log with `esp_err_to_name`, do not use `ESP_ERROR_CHECK` (allows graceful error LED behaviour instead of abort).
-- Wi-Fi timeout: log and halt (do not reboot silently — operator must investigate).
-
-## sdkconfig.defaults
-
-```
-CONFIG_ESP_CONSOLE_USB_CDC=y
-CONFIG_PARTITION_TABLE_CUSTOM=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
-CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
-```
-
-## Agent-Generated Headers
-
-- `.c` files: `/* AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator */`
-- CMakeLists.txt, sdkconfig.defaults, .gitignore, Kconfig.projbuild, partitions.csv: `# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator`
-- README.md: full HTML comment block.
-
-## File Layout
-
-- main/main.c
-- main/CMakeLists.txt
-- main/Kconfig.projbuild
-- main/server_cert.pem  ← placeholder; operator replaces with real CA cert
-- CMakeLists.txt
-- partitions.csv
-- sdkconfig.defaults
-- .gitignore
-- README.md
+- main/Kconfig.projbuild — Wi-Fi SSID/password, OTA server URL
+- main/server_cert.pem — placeholder PEM; operator replaces with real CA cert
+- partitions.csv — dual OTA partition table at example root

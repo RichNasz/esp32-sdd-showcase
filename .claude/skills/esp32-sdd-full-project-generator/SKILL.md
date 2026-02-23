@@ -44,6 +44,7 @@ Do not create files outside this layout. Do not place spec files at the example 
 MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before doing anything else.
 
 1. Read `examples/<name>/specs/FunctionalSpec.md`, `examples/<name>/specs/CodingSpec.md`, and `examples/<name>/specs/TestSpec.md` (if it exists).
+   - CodingSpec.md is high-level architectural guidance (constraints, preferred libraries, trade-offs, gotchas). It does not prescribe implementation — use your best judgement for all code-level decisions not covered by the spec.
 2. Read the relevant `board-specs/<vendor>/<board>.md` file identified in the FunctionalSpec.
 3. Read any `shared-specs/` files referenced in either spec.
 4. Generate the full project tree using the mandatory layout above:

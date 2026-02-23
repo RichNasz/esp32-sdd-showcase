@@ -8,128 +8,57 @@
 
 # Coding Specification — ESP-NOW Low-Power Mesh
 
-## Role Selection via Kconfig
+## Architecture
 
-```
-choice NODE_ROLE
-    prompt "Node role"
-    default NODE_ROLE_SENSOR
+Compile-time dual-role firmware. A single Kconfig choice (NODE_ROLE_SENSOR vs NODE_ROLE_GATEWAY)
+selects the active role at build time — not at runtime. Sensor nodes wake, transmit one ESP-NOW
+packet, wait for the send-callback acknowledgement via a semaphore, blink the LED, and enter
+deep sleep. The gateway node is always-on, registers a receive callback, and logs incoming
+packets with an LED blink per packet. Both roles share the same Wi-Fi and ESP-NOW initialization
+sequence.
 
-    config NODE_ROLE_SENSOR
-        bool "Sensor node (deep sleep between sends)"
+## Key Constraints
 
-    config NODE_ROLE_GATEWAY
-        bool "Gateway node (always-on receiver)"
-endchoice
+- ESP-NOW requires Wi-Fi to be initialized in STA mode even though no AP association occurs.
+  This is an ESP-IDF requirement; omitting Wi-Fi initialization causes ESP-NOW init to fail.
+- Fixed channel: all nodes must operate on the same Wi-Fi channel. Channel mismatch is the
+  most common cause of delivery failures in ESP-NOW networks.
+- Payload: a compact packed struct (node_id, msg_count, fake_temp) constrained to ≤ 250 bytes
+  (the ESP-NOW maximum). A compile-time static assert enforces this at build time.
+- Sensor sleep duration: 20 seconds.
+- Send acknowledgement timeout: 200 ms maximum before the sensor logs a warning and sleeps.
+- All configurable parameters (gateway MAC address, node ID) must be exposed via Kconfig.
 
-config GATEWAY_MAC
-    string "Gateway MAC address (AA:BB:CC:DD:EE:FF format)"
-    default "FF:FF:FF:FF:FF:FF"
-    depends on NODE_ROLE_SENSOR
+## Preferred Libraries and APIs
 
-config NODE_ID
-    int "This node's ID (1-255)"
-    default 1
-    range 1 255
-```
+Use the built-in ESP-NOW API (esp_now.h). It operates below the IP stack and requires no AP
+association, DHCP, or TCP session — making it ideal for low-power peer-to-peer messaging where
+full Wi-Fi connectivity would be excessive overhead.
 
-Place in `main/Kconfig.projbuild`.
+Use a FreeRTOS binary semaphore to synchronise the ESP-NOW send callback with app_main. This
+avoids busy-waiting and prevents the race conditions that a global flag would introduce.
 
-## ESP-NOW Initialisation (both roles)
+## Non-Functional Requirements
 
-```c
-// Phase 1: Wi-Fi init (required for ESP-NOW)
-esp_netif_init();
-esp_event_loop_create_default();
-wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-esp_wifi_init(&cfg);
-esp_wifi_set_mode(WIFI_MODE_STA);
-esp_wifi_start();
-esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);  // fixed channel
+- Sensor nodes must deinitialize ESP-NOW and stop Wi-Fi cleanly before entering deep sleep.
+  Leaving the radio active defeats the power budget of the duty-cycled sensor pattern.
+- Gateway LED blink must be non-blocking. The receive callback must not be delayed by LED
+  timing — use a task notification to drive the blink from a separate task.
+- esp_now_send() failure must be logged and the device must proceed to sleep. Do not use
+  ESP_ERROR_CHECK on the send call — a failed send is recoverable and must not abort the device.
 
-// Phase 2: ESP-NOW init
-esp_now_init();
-```
+## Gotchas
 
-## Sensor Node (`#if CONFIG_NODE_ROLE_SENSOR`)
+- ESP-NOW peers must be registered before calling esp_now_send(). Sending to an unregistered
+  peer returns an error that is easy to misread as a channel problem.
+- Wi-Fi mode must be WIFI_MODE_STA for ESP-NOW to function on ESP32-S3. WIFI_MODE_NULL is
+  insufficient even though no AP association is made.
+- The gateway MAC Kconfig string must be parsed into a byte array at runtime. MAC addresses
+  provided in the wrong format (wrong separator, wrong case) silently produce incorrect peer
+  registration rather than an error.
+- gpio_hold_dis() must be called on the sensor node before driving the LED GPIO after deep
+  sleep, as pad state may be held from the previous cycle.
 
-- RTC memory: `static RTC_DATA_ATTR uint16_t msg_count = 0;`
-- Deep sleep: `esp_sleep_enable_timer_wakeup(20 * 1000000ULL)`.
-- `#define SLEEP_SEC 20`
-- `#define SEND_TIMEOUT_MS 200`
+## File Layout (non-standard files)
 
-Send sequence:
-1. Parse `CONFIG_GATEWAY_MAC` string into `uint8_t mac[6]` using `sscanf`.
-2. Register peer: `esp_now_add_peer()` with gateway MAC, channel 1, no encryption.
-3. Build `espnow_payload_t` struct.
-4. Register send callback: `esp_now_register_send_cb(on_send_cb)`.
-5. `esp_now_send(gateway_mac, (uint8_t*)&payload, sizeof(payload))`.
-6. Wait on `xSemaphoreTake(send_done_sem, pdMS_TO_TICKS(SEND_TIMEOUT_MS))`.
-7. Blink LED based on `esp_now_send_status_t` from callback.
-8. `esp_now_deinit()` → `esp_wifi_stop()` → `esp_deep_sleep_start()`.
-
-## Gateway Node (`#if CONFIG_NODE_ROLE_GATEWAY`)
-
-- No deep sleep; runs `while(1) { vTaskDelay(pdMS_TO_TICKS(1000)); }`.
-- `esp_now_register_recv_cb(on_recv_cb)`.
-- `on_recv_cb`: cast data pointer to `espnow_payload_t*`; log node_id, msg_count, fake_temp.
-- Blink LED once per received packet (non-blocking: use `xTaskNotify` to a blink task).
-
-## Payload Struct
-
-```c
-typedef struct {
-    uint8_t  node_id;
-    uint16_t msg_count;
-    float    fake_temp;
-} __attribute__((packed)) espnow_payload_t;
-```
-
-Compile-time assert: `_Static_assert(sizeof(espnow_payload_t) <= 250, "Payload too large");`
-
-## LED Feedback
-
-- GPIO 21, active LOW.
-- Sensor: 1 blink on send success; 3 fast blinks on failure.
-- Gateway: 1 blink per received packet via notify task.
-- `gpio_hold_dis(GPIO_NUM_21)` before driving (deep sleep may hold pad state on sensor node).
-
-## Logging
-
-- Tag: `"espnow"`
-- Sensor wake: `ESP_LOGI(TAG, "Sensor #%d | msg #%u | sending to gateway", CONFIG_NODE_ID, msg_count)`
-- Send result: `ESP_LOGI(TAG, "Send %s", status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL")`
-- Gateway recv: `ESP_LOGI(TAG, "RX node=%u msg=%u temp=%.1f", p->node_id, p->msg_count, p->fake_temp)`
-
-## sdkconfig.defaults
-
-```
-CONFIG_ESP_CONSOLE_USB_CDC=y
-CONFIG_NODE_ROLE_SENSOR=y
-CONFIG_NODE_ID=1
-CONFIG_GATEWAY_MAC="FF:FF:FF:FF:FF:FF"
-```
-
-(Operator changes `CONFIG_NODE_ROLE_GATEWAY=y` and `CONFIG_GATEWAY_MAC` on gateway board.)
-
-## Error Handling
-
-- `ESP_ERROR_CHECK` on all Wi-Fi and ESP-NOW init calls.
-- `esp_now_send` return value: check and log but do not abort.
-- Send timeout: log warning, skip LED blink, proceed to sleep.
-
-## Agent-Generated Headers
-
-- `.c` files: `/* AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator */`
-- CMakeLists.txt, sdkconfig.defaults, .gitignore, Kconfig.projbuild: `# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator`
-- README.md: full HTML comment block.
-
-## File Layout
-
-- main/main.c
-- main/CMakeLists.txt
-- main/Kconfig.projbuild
-- CMakeLists.txt
-- sdkconfig.defaults
-- .gitignore
-- README.md
+- main/Kconfig.projbuild — NODE_ROLE choice, GATEWAY_MAC string, NODE_ID integer

@@ -25,12 +25,15 @@ Use this when you want to add a new ESP32 example to the catalog.
 ```
 1. Edit specs/showcase-master-spec.md   (add your example to the catalog)
 2. Say: "Activate esp32-sdd-functional-spec-creator skill"
-        → Creates examples/<name>/FunctionalSpec.md
+        → Creates examples/<name>/specs/FunctionalSpec.md
 3. Review and approve the FunctionalSpec.md (you may annotate but not rewrite)
-4. Add examples/<name>/CodingSpec.md    (optional: implementation preferences)
-5. Say: "Activate esp32-sdd-full-project-generator skill"
+4. Add examples/<name>/specs/CodingSpec.md   (high-level technical guidance — architecture,
+                                               constraints, preferred libraries, gotchas)
+5. Add examples/<name>/specs/TestSpec.md     (optional: testing requirements — automated and
+                                               manual test cases for the README Testing section)
+6. Say: "Activate esp32-sdd-full-project-generator skill"
         → Generates the complete ESP-IDF project
-6. idf.py build flash monitor
+7. idf.py build flash monitor
 ```
 
 ---

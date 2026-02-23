@@ -8,114 +8,60 @@
 
 # Coding Specification — Deep Sleep BME280 + MQTT Sensor Node
 
-## Deep Sleep Configuration
+## Architecture
 
-- Timer wakeup: `esp_sleep_enable_timer_wakeup(15 * 1000000ULL)` (15 seconds).
-- Ext1 wakeup: `esp_sleep_enable_ext1_wakeup(BIT(GPIO_NUM_0), ESP_EXT1_WAKEUP_ANY_LOW)` for button.
-- `#define SLEEP_SEC 15`
-- `#define ACTIVE_TIMEOUT_MS 14000` — abort and sleep if publish not complete within 14 s.
-- Enter sleep: `esp_deep_sleep_start()`.
+Linear pipeline per wake cycle: read sensor → connect Wi-Fi → publish MQTT → disconnect →
+sleep. Each stage has an independent timeout. Failure at any stage skips all subsequent
+stages and enters deep sleep immediately — the device must never block indefinitely waiting
+for network or sensor responses. The entire pipeline runs in app_main's implicit task with
+no additional FreeRTOS tasks.
 
-## RTC Memory
+## Key Constraints
 
-- `static RTC_DATA_ATTR uint32_t boot_count = 0;` — increment first in `app_main`.
+- Sleep duration: 15 seconds.
+- Hard active-window deadline: 15 seconds. If the full pipeline has not completed by this
+  deadline, the device must abandon the current cycle and enter sleep.
+- I2C bus: D4 (SDA) and D5 (SCL) at 400 kHz. Use the ESP-IDF 5.x i2c_master new driver
+  API — not the legacy i2c_driver_install / i2c_master_cmd_begin pattern.
+- BME280 mode: forced (single measurement, then standby). This minimises I2C active time
+  and avoids running the sensor's internal ODR during the sleep period.
+- Wi-Fi association timeout: 10 seconds maximum before the stage is abandoned.
+- MQTT: QoS 0, retain false, single publish per cycle. QoS 1 would require PUBACK handling
+  which is unnecessary complexity for this duty-cycled pattern.
+- JSON payload must include temperature, humidity, pressure, and the boot counter.
+- All configurable parameters (Wi-Fi credentials, broker URI, BME280 I2C address) must be
+  exposed via Kconfig, not hardcoded.
 
-## I2C / BME280
+## Preferred Libraries and APIs
 
-- I2C port: I2C_NUM_0; SDA = GPIO 5 (D4); SCL = GPIO 6 (D5).
-- I2C clock: 400 kHz.
-- BME280 I2C address: 0x76 (SDO tied LOW) or 0x77 (SDO HIGH) — use Kconfig option `CONFIG_BME280_I2C_ADDR` defaulting to 0x76.
-- Use ESP-IDF `i2c_master` driver (ESP-IDF 5.x new driver API, not legacy `i2c_*` API).
-- Read BME280 using the Bosch BME280 driver via `idf_component.yml` (component: `bosch/bme280`).
-- Oversample: temperature ×2, humidity ×1, pressure ×4; mode: forced (single reading then standby).
-- Wait for measurement ready: poll `bme280_get_sensor_mode()` or use `vTaskDelay(pdMS_TO_TICKS(10))`.
+- BME280: use the Bosch reference driver via the ESP-IDF Component Registry (idf_component.yml
+  dependency). Do not write a bare I2C driver from scratch — the reference driver handles
+  calibration compensation correctly.
+- MQTT: use the ESP-IDF built-in esp_mqtt_client. No external library is needed.
+- Wi-Fi: standard STA mode with event loop. No roaming or complex reconnect logic required.
 
-## Wi-Fi
+## Non-Functional Requirements
 
-- Mode: WIFI_MODE_STA.
-- Use `esp_wifi_connect()` + event loop; wait for `IP_EVENT_STA_GOT_IP` before proceeding.
-- Timeout: 10 seconds maximum for association + DHCP; on timeout log error and enter sleep.
-- Disconnect with `esp_wifi_disconnect()` + `esp_wifi_stop()` before calling `esp_deep_sleep_start()`.
-- Credentials: `CONFIG_WIFI_SSID` and `CONFIG_WIFI_PASSWORD` via `Kconfig.projbuild`.
+- Wi-Fi and MQTT must be disconnected cleanly before entering deep sleep. Leaving TCP state
+  open causes delays and potential failures on the next wake.
+- GPIO 0 (boot button) must be configured as an ext1 wakeup source for on-demand readings.
+  Its wakeup cause should produce the same pipeline as a timer wakeup.
+- LED blink after successful publish is the only visual feedback. No blink on failure — the
+  absence of a blink signals the operator to check the serial log.
+- The example must work with a minimal MQTT broker (no TLS, no auth) for ease of setup.
+  TLS is covered in the secure-ota-https example.
 
-## MQTT
+## Gotchas
 
-- Client: `esp_mqtt_client` (ESP-IDF built-in, no external component needed).
-- Broker URI: `CONFIG_MQTT_BROKER_URI` via `Kconfig.projbuild` (default: `mqtt://192.168.1.100`).
-- Topic: `sdd/sensor/bme280`, QoS 0, retain = false.
-- Payload format (use `snprintf`):
-  `{"temp":%.1f,"hum":%.1f,"pres":%.1f,"boot":%lu}`
-- Publish once; do not wait for PUBACK at QoS 0.
-- Disconnect: `esp_mqtt_client_disconnect()` + `esp_mqtt_client_destroy()`.
+- ADC2 is unavailable when Wi-Fi is active on ESP32-S3. All user pads on the XIAO use
+  ADC1 so this does not affect this example, but the README should note it.
+- The new i2c_master API (ESP-IDF 5.x) is substantially different from the legacy API.
+  Using the legacy API will cause deprecation warnings or link errors depending on ESP-IDF
+  version. Always use the new API.
+- USB-CDC requires a brief startup delay before the first log line, specific to the XIAO's
+  native USB implementation.
 
-## LED Feedback
+## File Layout (non-standard files)
 
-- GPIO 21, active LOW.
-- Blink once (100 ms) after successful MQTT publish.
-- `gpio_hold_dis(GPIO_NUM_21)` before driving; no hold needed before sleep.
-
-## Kconfig Options (main/Kconfig.projbuild)
-
-```
-config WIFI_SSID
-    string "Wi-Fi SSID"
-    default "myssid"
-
-config WIFI_PASSWORD
-    string "Wi-Fi Password"
-    default "mypassword"
-
-config MQTT_BROKER_URI
-    string "MQTT Broker URI"
-    default "mqtt://192.168.1.100"
-
-config BME280_I2C_ADDR
-    hex "BME280 I2C Address"
-    default 0x76
-    range 0x76 0x77
-```
-
-## Logging
-
-- Tag: `"sensor-node"`
-- On wake: log boot count and wakeup cause.
-- After BME280 read: `ESP_LOGI(TAG, "T=%.1f°C  H=%.1f%%  P=%.1fhPa", temp, hum, pres)`
-- After publish: `ESP_LOGI(TAG, "Published to %s — sleeping %d s", CONFIG_MQTT_BROKER_URI, SLEEP_SEC)`
-- On timeout: `ESP_LOGW(TAG, "Active window exceeded — forcing sleep")`
-
-## Error Handling
-
-- `ESP_ERROR_CHECK` on all init calls.
-- BME280 read failure: log error, skip publish, enter sleep.
-- Wi-Fi timeout: log error, skip publish, enter sleep.
-- MQTT connect failure: log error, enter sleep.
-- Never abort() in production sleep loop.
-
-## USB-CDC
-
-- `CONFIG_ESP_CONSOLE_USB_CDC=y` in sdkconfig.defaults.
-- `vTaskDelay(pdMS_TO_TICKS(100))` at start of `app_main` for CDC enumeration.
-
-## idf_component.yml
-
-```yaml
-dependencies:
-  bosch/bme280: ">=1.0.0"
-```
-
-## Agent-Generated Headers
-
-- `.c` files: `/* AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator */`
-- CMakeLists.txt, sdkconfig.defaults, .gitignore, Kconfig.projbuild: `# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator`
-- README.md: full HTML comment block.
-
-## File Layout
-
-- main/main.c
-- main/CMakeLists.txt
-- main/Kconfig.projbuild
-- CMakeLists.txt
-- sdkconfig.defaults
-- idf_component.yml
-- .gitignore
-- README.md
+- main/Kconfig.projbuild — Wi-Fi, broker URI, BME280 address configuration
+- idf_component.yml — bosch/bme280 component registry dependency
