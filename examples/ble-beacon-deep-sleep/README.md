@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 05 · BLE Beacon + Deep Sleep — Multi-Year Battery Life
+# BLE Beacon + Deep Sleep — Multi-Year Battery Life
 
 > **Extreme low power.** Achieves multi-year coin-cell operation by combining Bluetooth LE advertising with aggressive deep sleep between beacon cycles.
 
@@ -27,7 +27,7 @@
 ## Build & Flash
 
 ```sh
-cd examples/05-ble-beacon-deep-sleep
+cd examples/ble-beacon-deep-sleep
 idf.py set-target esp32
 idf.py build flash monitor
 ```

@@ -25,14 +25,14 @@ The ESP32 SDD Showcase is a reference implementation of **Spec-Driven Developmen
 
 | # | Example | Concept |
 |---|---|---|
-| 01 | [blinky](../examples/01-blinky/) | Baseline: SDD structure + LEDC PWM, multi-board |
-| 02 | [deep-sleep-timer-node](../examples/02-deep-sleep-timer-node/) | RTC wakeup + NVS persistence |
-| 03 | [deep-sleep-bme280-mqtt](../examples/03-deep-sleep-bme280-mqtt/) | IoT sensor node: BME280 + Wi-Fi + MQTT |
-| 04 | [hardware-aes-secure-storage](../examples/04-hardware-aes-secure-storage/) | AES-256 hardware accelerator |
-| 05 | [ble-beacon-deep-sleep](../examples/05-ble-beacon-deep-sleep/) | BLE beacon + multi-year battery life |
-| 06 | [secure-ota-https](../examples/06-secure-ota-https/) | HTTPS OTA + RSA signature verification |
-| 07 | [esp-now-low-power-mesh](../examples/07-esp-now-low-power-mesh/) | ESP-NOW Wi-Fi-free mesh |
-| 08 | [capacitive-touch-wakeup](../examples/08-capacitive-touch-wakeup/) | Capacitive touch wakeup |
+| 1 | [blinky](../examples/blinky/) | Baseline: SDD structure + LEDC PWM, multi-board |
+| 2 | [deep-sleep-timer-node](../examples/deep-sleep-timer-node/) | RTC wakeup + NVS persistence |
+| 3 | [deep-sleep-bme280-mqtt-sensor](../examples/deep-sleep-bme280-mqtt-sensor/) | IoT sensor node: BME280 + Wi-Fi + MQTT |
+| 4 | [hardware-aes-secure-storage](../examples/hardware-aes-secure-storage/) | AES-256 hardware accelerator |
+| 5 | [ble-beacon-deep-sleep](../examples/ble-beacon-deep-sleep/) | BLE beacon + multi-year battery life |
+| 6 | [secure-ota-https](../examples/secure-ota-https/) | HTTPS OTA + RSA signature verification |
+| 7 | [esp-now-low-power-mesh](../examples/esp-now-low-power-mesh/) | ESP-NOW Wi-Fi-free mesh |
+| 8 | [capacitive-touch-wakeup](../examples/capacitive-touch-wakeup/) | Capacitive touch wakeup |
 
 ## Agent Skills
 
@@ -75,7 +75,7 @@ Full workflow details: [docs/workflows/README.md](workflows/README.md)
 
 ## IDE Integration
 
-Each example is a standalone ESP-IDF project. For the best development experience open **only the example folder** (e.g. `examples/01-blinky/`) in VS Code or Cursor — not the repository root. The official ESP-IDF Extension will then auto-detect the project and enable one-click build, flash, monitor, and debug.
+Each example is a standalone ESP-IDF project. For the best development experience open **only the example folder** (e.g. `examples/blinky/`) in VS Code or Cursor — not the repository root. The official ESP-IDF Extension will then auto-detect the project and enable one-click build, flash, monitor, and debug.
 
 See [guides/using-with-ai-agents.md](guides/using-with-ai-agents.md) for full setup details.
 

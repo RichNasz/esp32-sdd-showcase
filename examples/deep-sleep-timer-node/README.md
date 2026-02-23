@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 02 · Deep Sleep Timer Node — RTC Wakeup + NVS Persistence
+# Deep Sleep Timer Node — RTC Wakeup + NVS Persistence
 
 > **Power foundation.** Demonstrates the core deep-sleep / wake / persist loop that underpins every battery-powered ESP32 application.
 
@@ -26,7 +26,7 @@
 ## Build & Flash
 
 ```sh
-cd examples/02-deep-sleep-timer-node
+cd examples/deep-sleep-timer-node
 idf.py set-target esp32
 idf.py build flash monitor
 ```

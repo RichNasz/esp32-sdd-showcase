@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 01 · Blinky — PWM Breathing LED (Multi-Board)
+# Blinky — PWM Breathing LED (Multi-Board)
 
 ## Overview
 
@@ -31,7 +31,7 @@ pin numbers, no busy-wait loops.
 ### Seeed XIAO ESP32S3 (default)
 
 ```sh
-cd examples/01-blinky
+cd examples/blinky
 idf.py set-target esp32s3
 idf.py build flash monitor
 ```
@@ -39,7 +39,7 @@ idf.py build flash monitor
 ### Adafruit HUZZAH32
 
 ```sh
-cd examples/01-blinky
+cd examples/blinky
 idf.py set-target esp32
 idf.py build flash monitor
 ```
@@ -54,7 +54,7 @@ This folder is a complete, standalone ESP-IDF project. Open **only this folder**
 (not the repository root) in VS Code or Cursor so the official ESP-IDF Extension
 can detect and configure the project automatically.
 
-**File → Open Folder… → select `examples/01-blinky/`**
+**File → Open Folder… → select `examples/blinky/`**
 
 This gives you one-click Build / Flash / Monitor / Debug, Menuconfig, and size
 analysis from the ESP-IDF commands palette. Do not open the top-level repository

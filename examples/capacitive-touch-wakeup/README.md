@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 08 · Capacitive Touch Wakeup — Touch-Driven Interfaces
+# Capacitive Touch Wakeup — Touch-Driven Interfaces
 
 > **Human-interface deep sleep.** Wakes the ESP32 from deep sleep on a fingertip touch — enabling zero-standby-power touch interfaces for panels, enclosures, and wearables.
 
@@ -27,7 +27,7 @@
 ## Build & Flash
 
 ```sh
-cd examples/08-capacitive-touch-wakeup
+cd examples/capacitive-touch-wakeup
 idf.py set-target esp32
 idf.py build flash monitor
 ```

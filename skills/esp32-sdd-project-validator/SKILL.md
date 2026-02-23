@@ -25,7 +25,7 @@ MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before do
 
 1. Read `specs/example-project-structure-spec.md` — load the permanent locked structure.
 2. Read `shared-specs/AIGenLessonsLearned.md` — load the core rules.
-3. List all files inside the target example folder (e.g. `examples/01-blinky/`).
+3. List all files inside the target example folder (e.g. `examples/blinky/`).
 4. Run every check below in order. For each check record: ✅ PASS, ❌ FAIL, or ⚠️ WARNING.
 
 ---

@@ -6,20 +6,20 @@
 
 # examples/
 
-Eight progressive ESP32 examples, each fully generated from its `FunctionalSpec.md` and `CodingSpec.md` by the **esp32-sdd-full-project-generator** skill. They are ordered by complexity — start with `01-blinky` and work forward.
+Eight progressive ESP32 examples, each fully generated from its `FunctionalSpec.md` and `CodingSpec.md` by the **esp32-sdd-full-project-generator** skill. They are ordered by complexity — start with `blinky` and work forward.
 
 ## Catalog
 
 | # | Example | Core Concept | Key ESP32 Hardware Feature |
 |---|---|---|---|
-| 01 | [blinky](01-blinky/) | Baseline project structure, multi-board | LEDC PWM breathing LED |
-| 02 | [deep-sleep-timer-node](02-deep-sleep-timer-node/) | RTC wakeup + NVS persistence | Deep sleep timer wakeup |
-| 03 | [deep-sleep-bme280-mqtt](03-deep-sleep-bme280-mqtt/) | Real IoT sensor node | BME280 + Wi-Fi + MQTT |
-| 04 | [hardware-aes-secure-storage](04-hardware-aes-secure-storage/) | Crypto accelerator | AES-256 hardware engine |
-| 05 | [ble-beacon-deep-sleep](05-ble-beacon-deep-sleep/) | Multi-year battery life | BLE advertising + deep sleep |
-| 06 | [secure-ota-https](06-secure-ota-https/) | Signed production updates | HTTPS OTA + signature verify |
-| 07 | [esp-now-low-power-mesh](07-esp-now-low-power-mesh/) | Wi-Fi-free mesh networking | ESP-NOW + power management |
-| 08 | [capacitive-touch-wakeup](08-capacitive-touch-wakeup/) | Touch-driven interfaces | Touch sensor wakeup |
+| 1 | [blinky](blinky/) | Baseline project structure, multi-board | LEDC PWM breathing LED |
+| 2 | [deep-sleep-timer-node](deep-sleep-timer-node/) | RTC wakeup + NVS persistence | Deep sleep timer wakeup |
+| 3 | [deep-sleep-bme280-mqtt-sensor](deep-sleep-bme280-mqtt-sensor/) | Real IoT sensor node | BME280 + Wi-Fi + MQTT |
+| 4 | [hardware-aes-secure-storage](hardware-aes-secure-storage/) | Crypto accelerator | AES-256 hardware engine |
+| 5 | [ble-beacon-deep-sleep](ble-beacon-deep-sleep/) | Multi-year battery life | BLE advertising + deep sleep |
+| 6 | [secure-ota-https](secure-ota-https/) | Signed production updates | HTTPS OTA + signature verify |
+| 7 | [esp-now-low-power-mesh](esp-now-low-power-mesh/) | Wi-Fi-free mesh networking | ESP-NOW + power management |
+| 8 | [capacitive-touch-wakeup](capacitive-touch-wakeup/) | Touch-driven interfaces | Touch sensor wakeup |
 
 ## Example Structure
 
@@ -45,8 +45,8 @@ examples/<kebab-name>/
 ### Command Line
 
 ```sh
-cd examples/01-blinky
-idf.py set-target esp32
+cd examples/blinky
+idf.py set-target esp32s3
 idf.py build flash monitor
 ```
 
@@ -56,7 +56,7 @@ Replace `esp32` with `esp32s2`, `esp32s3`, or `esp32c3` as appropriate for your 
 
 Each example folder is a **complete, standalone ESP-IDF project**. For the best experience:
 
-1. **File → Open Folder…** and select the specific example folder (e.g. `examples/01-blinky/`)
+1. **File → Open Folder…** and select the specific example folder (e.g. `examples/blinky/`)
 2. The ESP-IDF Extension auto-detects the project and enables Build / Flash / Monitor / Debug from the commands palette.
 
 > Do **not** open the repository root as your active workspace when developing an example — this creates a multi-root workspace that confuses the ESP-IDF Extension. Open the entire repository only for browsing specs.

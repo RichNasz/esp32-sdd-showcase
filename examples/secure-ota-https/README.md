@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 06 · Secure OTA via HTTPS — Signed Production Updates
+# Secure OTA via HTTPS — Signed Production Updates
 
 > **Production OTA.** Full over-the-air update pipeline with HTTPS transport, RSA signature verification, and automatic rollback on boot failure.
 
@@ -26,7 +26,7 @@
 ## Build & Flash
 
 ```sh
-cd examples/06-secure-ota-https
+cd examples/secure-ota-https
 idf.py set-target esp32
 idf.py menuconfig   # set Wi-Fi credentials and OTA server URL
 idf.py build flash monitor

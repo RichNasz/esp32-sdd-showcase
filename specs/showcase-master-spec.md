@@ -1,14 +1,14 @@
 # Showcase Master Specification
 
 ## Examples Catalog
-01-blinky – breathing LED, multi-board (HUZZAH32 + XIAO ESP32S3)
-02-deep-sleep-timer-node – RTC wakeup + persistence  
-03-deep-sleep-bme280-mqtt – real IoT sensor node  
-04-hardware-aes-secure-storage – crypto accelerator  
-05-ble-beacon-deep-sleep – multi-year battery life  
-06-secure-ota-https – signed production updates  
-07-esp-now-low-power-mesh – Wi-Fi-free mesh  
-08-capacitive-touch-wakeup – touch interfaces
+blinky – breathing LED, multi-board (HUZZAH32 + XIAO ESP32S3)
+deep-sleep-timer-node – RTC wakeup + persistence
+deep-sleep-bme280-mqtt-sensor – real IoT sensor node
+hardware-aes-secure-storage – crypto accelerator
+ble-beacon-deep-sleep – multi-year battery life
+secure-ota-https – signed production updates
+esp-now-low-power-mesh – Wi-Fi-free mesh
+capacitive-touch-wakeup – touch interfaces
 
 ## Example Directory Structure
 See `specs/example-project-structure-spec.md` for the permanent, immutable layout every example must follow.

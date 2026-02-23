@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 03 · Deep Sleep BME280 + MQTT — Real IoT Sensor Node
+# Deep Sleep BME280 + MQTT — Real IoT Sensor Node
 
 > **Production IoT pattern.** Combines sensor reading, Wi-Fi acquisition, MQTT publish, and deep sleep into a disciplined power-managed measurement loop.
 
@@ -28,7 +28,7 @@
 ## Build & Flash
 
 ```sh
-cd examples/03-deep-sleep-bme280-mqtt
+cd examples/deep-sleep-bme280-mqtt-sensor
 idf.py set-target esp32
 idf.py menuconfig   # set Wi-Fi SSID/password and MQTT broker URL
 idf.py build flash monitor

@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 07 · ESP-NOW Low-Power Mesh — Wi-Fi-Free Networking
+# ESP-NOW Low-Power Mesh — Wi-Fi-Free Networking
 
 > **Infrastructure-free mesh.** Multi-node sensor network using ESP-NOW — no router, no cloud, sub-10 ms latency, and deep sleep between transmissions on sensor nodes.
 
@@ -28,7 +28,7 @@
 
 ```sh
 # Gateway node
-cd examples/07-esp-now-low-power-mesh
+cd examples/esp-now-low-power-mesh
 idf.py -DNODE_ROLE=gateway build
 idf.py -p /dev/ttyUSB0 flash monitor
 

@@ -14,7 +14,7 @@ Step-by-step guides for getting started with the ESP32 SDD Showcase, from enviro
 |---|---|
 | [01 — Toolchain Setup](01-toolchain-setup.md) | Install ESP-IDF, the Xtensa toolchain, and verify your environment |
 | [02 — Install Skills](02-install-skills.md) | Install the agent skill suite with `@agentskills/cli` |
-| [03 — Run Your First Example](03-first-example.md) | Build and flash `01-blinky` from scratch |
+| [03 — Run Your First Example](03-first-example.md) | Build and flash `blinky` from scratch |
 | [04 — Create a New Example](04-new-example.md) | Use `esp32-sdd-functional-spec-creator` to spec and generate a new project |
 | [05 — Add a Board Spec](05-add-board-spec.md) | Use `esp32-board-spec-generator` to add your board to the catalog |
 | [06 — Deep Sleep Design](06-deep-sleep-design.md) | Use `esp32-deep-sleep-engineer` to hit your power budget |

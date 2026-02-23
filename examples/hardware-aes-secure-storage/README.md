@@ -4,7 +4,7 @@
      Date: 2026-02-22 | Agent: Claude Code
      ================================================ -->
 
-# 04 · Hardware AES Secure Storage — Crypto Accelerator
+# Hardware AES Secure Storage — Crypto Accelerator
 
 > **Security foundation.** Demonstrates ESP32's on-chip AES-256 hardware engine via mbedTLS for fast, transparent encryption of sensitive data stored in NVS.
 
@@ -26,7 +26,7 @@
 ## Build & Flash
 
 ```sh
-cd examples/04-hardware-aes-secure-storage
+cd examples/hardware-aes-secure-storage
 idf.py set-target esp32
 idf.py build flash monitor
 ```

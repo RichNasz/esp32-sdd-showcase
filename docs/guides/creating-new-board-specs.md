@@ -206,4 +206,4 @@ When a board spec is corrected or updated:
 3. Regenerate the affected example with `esp32-sdd-full-project-generator`.
 4. Run `esp32-sdd-project-validator` on the regenerated example to confirm structural compliance.
 
-> **01-blinky follow-up**: The XIAO ESP32S3 LED is GPIO21 (active LOW), not GPIO10 as the initial placeholder stated. The `examples/01-blinky/specs/CodingSpec.md` and `main.c` require a regeneration pass to correct this. See the follow-up task note in the project's issue tracker.
+> **blinky follow-up**: The XIAO ESP32S3 LED is GPIO21 (active LOW), not GPIO10 as the initial placeholder stated. The `examples/blinky/specs/CodingSpec.md` and `main.c` require a regeneration pass to correct this. See the follow-up task note in the project's issue tracker.

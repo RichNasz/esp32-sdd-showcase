@@ -95,8 +95,8 @@ Each example folder in this repository is a **complete, standalone ESP-IDF proje
 **Recommended workflow (for development):**
 1. In VS Code or Cursor, choose **File → Open Folder…**
 2. Navigate to and open **only the specific example folder**, for example:
-   - `examples/01-blinky/`
-   - `examples/03-deep-sleep-bme280-mqtt/`
+   - `examples/blinky/`
+   - `examples/deep-sleep-bme280-mqtt-sensor/`
    etc.
 
 3. Once the example folder is the workspace root, the official ESP-IDF VS Code Extension will automatically detect the project and give you full support for:
