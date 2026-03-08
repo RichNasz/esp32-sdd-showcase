@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-full-project-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-03-08 | Agent: Claude Code
      ================================================ -->
 
 # Blinky — PWM Breathing LED (Multi-Board)
@@ -19,12 +19,14 @@ pin numbers, no busy-wait loops.
 - **ESP-IDF 5.x** installed and `idf.py` on your PATH
 - One of the supported boards:
 
-| Board | SoC | LED GPIO | Polarity | idf.py target |
-|---|---|---|---|---|
-| Seeed XIAO ESP32S3 *(default)* | ESP32-S3 | GPIO 21 | Active LOW | `esp32s3` |
-| Adafruit HUZZAH32 (ESP32 Feather) | ESP32 | GPIO 13 | Active HIGH | `esp32` |
+| Board | SoC | LED GPIO | Polarity | Console config | `idf.py` target |
+| --- | --- | --- | --- | --- | --- |
+| Seeed XIAO ESP32S3 *(default)* | ESP32-S3 | GPIO 21 | Active LOW | `CONFIG_ESP_CONSOLE_USB_CDC=y` | `esp32s3` |
+| Adafruit HUZZAH32 (ESP32 Feather) | ESP32 | GPIO 13 | Active HIGH | *(UART — no extra config)* | `esp32` |
+| Seeed XIAO ESP32-C5 | ESP32-C5 | GPIO 27 | Active LOW | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` | `esp32c5` |
+| Seeed XIAO ESP32-C6 | ESP32-C6 | GPIO 15 | Active LOW | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` | `esp32c6` |
 
-- USB-C cable (XIAO) or USB Micro-B cable (HUZZAH32) for flashing and serial monitoring
+- Matching USB cable for flashing and serial monitoring
 
 ## Build & Flash
 
@@ -44,9 +46,30 @@ idf.py set-target esp32
 idf.py build flash monitor
 ```
 
-> **Switching boards:** Open `specs/CodingSpec.md`, update the `BOARD SELECTION` block at the
-> top, then regenerate via the `esp32-sdd-full-project-generator` skill. Never edit
-> generated files by hand.
+### Seeed XIAO ESP32-C5
+
+```sh
+cd examples/blinky
+idf.py set-target esp32c5
+idf.py build flash monitor
+```
+
+### Seeed XIAO ESP32-C6
+
+```sh
+cd examples/blinky
+idf.py set-target esp32c6
+idf.py build flash monitor
+```
+
+> **Switching boards — two required steps, in order:**
+>
+> 1. `idf.py set-target <chip>` — e.g. `idf.py set-target esp32c6`. This clears the
+>    stale `sdkconfig`; skipping this step leaves the old board's GPIO in effect and
+>    the LED will not respond.
+> 2. `idf.py menuconfig` → **Target board** → select the new board → Save & Exit.
+>
+> Then rebuild and reflash. Never edit generated source files directly.
 
 ### Opening in VS Code / Cursor
 
@@ -64,16 +87,42 @@ folder as your active workspace while developing this example.
 
 ### XIAO ESP32S3 (active LOW, GPIO 21)
 
-```
-I (320) blinky: Board GPIO=21  freq=5000 Hz  resolution=8192-bit  polarity=active-LOW
-I (322) blinky: Fade started — breathing period: 4000 ms
+```text
+I (320) blinky: Board GPIO=21  freq=5000 Hz  resolution=13-bit  polarity=active-LOW
+I (322) blinky: Breathing period: 4000 ms
+I (324) blinky: Fade up → duty 0
+I (2326) blinky: Fade down → duty 8191
+I (4328) blinky: Fade up → duty 0
 ```
 
-### HUZZAH32 (active HIGH, GPIO 13)
+### Adafruit HUZZAH32 (active HIGH, GPIO 13)
 
+```text
+I (320) blinky: Board GPIO=13  freq=5000 Hz  resolution=13-bit  polarity=active-HIGH
+I (322) blinky: Breathing period: 4000 ms
+I (324) blinky: Fade up → duty 8191
+I (2326) blinky: Fade down → duty 0
+I (4328) blinky: Fade up → duty 8191
 ```
-I (320) blinky: Board GPIO=13  freq=5000 Hz  resolution=8192-bit  polarity=active-HIGH
-I (322) blinky: Fade started — breathing period: 4000 ms
+
+### XIAO ESP32-C5 (active LOW, GPIO 27)
+
+```text
+I (320) blinky: Board GPIO=27  freq=5000 Hz  resolution=13-bit  polarity=active-LOW
+I (322) blinky: Breathing period: 4000 ms
+I (324) blinky: Fade up → duty 0
+I (2326) blinky: Fade down → duty 8191
+I (4328) blinky: Fade up → duty 0
+```
+
+### XIAO ESP32-C6 (active LOW, GPIO 15)
+
+```text
+I (320) blinky: Board GPIO=15  freq=5000 Hz  resolution=13-bit  polarity=active-LOW
+I (322) blinky: Breathing period: 4000 ms
+I (324) blinky: Fade up → duty 0
+I (2326) blinky: Fade down → duty 8191
+I (4328) blinky: Fade up → duty 0
 ```
 
 The LED breathes smoothly through a full 4-second cycle (2 s up, 2 s down), indefinitely.
@@ -83,11 +132,12 @@ The LED breathes smoothly through a full 4-second cycle (2 s up, 2 s down), inde
 - `ledc_timer_config_t` / `ledc_channel_config_t` — hardware PWM timer and channel setup
 - `ledc_fade_func_install()` + `ledc_set_fade_with_time()` — smooth fade without CPU polling
 - `ledc_cb_register()` — interrupt-driven fade completion callback chaining the next fade
-- `LEDC_HIGH_SPEED_MODE` (ESP32) vs `LEDC_LOW_SPEED_MODE` (ESP32-S3) — speed mode differences
+- `LEDC_HIGH_SPEED_MODE` (ESP32) vs `LEDC_LOW_SPEED_MODE` (ESP32-S3, ESP32-C5) — speed mode differences per SoC family
 - Kconfig `choice` block in `main/Kconfig.projbuild` for multi-board selection
 - `CONFIG_BOARD_*` macros for compile-time GPIO and LEDC mode resolution
 - `LED_ACTIVE_LOW` / `DUTY_ON` / `DUTY_OFF` — active LED polarity abstraction
-- `CONFIG_ESP_CONSOLE_USB_CDC=y` — required for serial output on XIAO (native USB, no UART bridge)
+- `CONFIG_ESP_CONSOLE_USB_CDC=y` — required for serial output on XIAO ESP32S3 (native USB OTG)
+- `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` — required for serial output on XIAO ESP32-C5 (USB Serial/JTAG controller, distinct from S3's USB OTG)
 
 ## Testing
 
@@ -99,18 +149,20 @@ Testing philosophy: automated first, manual only when hardware observation is un
 
    ```sh
    cd examples/blinky
-   idf.py set-target esp32 && idf.py build
+   idf.py set-target esp32
+   idf.py build 2>&1 | grep -E "warning:|error:|ninja: build stopped"
    ```
 
-   Pass: exit code 0, zero compiler warnings.
+   Pass: exit code 0, grep produces no output.
 
 2. **Zero-warning build — XIAO ESP32S3 (T-A2)**
 
    ```sh
-   idf.py set-target esp32s3 && idf.py build
+   idf.py set-target esp32s3
+   idf.py build 2>&1 | grep -E "warning:|error:|ninja: build stopped"
    ```
 
-   Pass: exit code 0, zero compiler warnings.
+   Pass: exit code 0, grep produces no output.
 
 3. **Binary size check (T-A3)**
 
@@ -143,7 +195,7 @@ Testing philosophy: automated first, manual only when hardware observation is un
    Observe the amber LED (GPIO 21): confirm the first fade is dark → bright (active-LOW polarity correct), then smooth continuous breathing. Check serial output shows `Fade up` on first cycle, then alternating `Fade up` / `Fade down`.
 
 3. **Board switch regression (T-M3)**
-   Repeat T-M1 and T-M2 after switching the active board in `specs/CodingSpec.md` and regenerating. Both boards must pass on every switch.
+   Repeat T-M1 and T-M2 after switching boards via `idf.py menuconfig`. Both boards must pass on every switch.
 
 Full test details: [specs/TestSpec.md](specs/TestSpec.md)
 
@@ -157,3 +209,5 @@ Full test details: [specs/TestSpec.md](specs/TestSpec.md)
 
 - [board-specs/adafruit/huzzah32.md](../../board-specs/adafruit/huzzah32.md)
 - [board-specs/seeed/xiao-esp32s3.md](../../board-specs/seeed/xiao-esp32s3.md)
+- [board-specs/seeed/xiao-esp32c5.md](../../board-specs/seeed/xiao-esp32c5.md)
+- [board-specs/seeed/xiao-esp32c6.md](../../board-specs/seeed/xiao-esp32c6.md)

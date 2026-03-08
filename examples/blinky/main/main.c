@@ -16,8 +16,16 @@ static const char *TAG = "blinky";
 #define LED_GPIO        21
 #define LEDC_MODE       LEDC_LOW_SPEED_MODE
 #define LED_ACTIVE_LOW  1
+#elif CONFIG_BOARD_SEEED_XIAO_ESP32C5
+#define LED_GPIO        27
+#define LEDC_MODE       LEDC_LOW_SPEED_MODE
+#define LED_ACTIVE_LOW  1
+#elif CONFIG_BOARD_SEEED_XIAO_ESP32C6
+#define LED_GPIO        15
+#define LEDC_MODE       LEDC_LOW_SPEED_MODE
+#define LED_ACTIVE_LOW  1
 #else
-#error "No board selected — set CONFIG_BOARD_* in sdkconfig.defaults"
+#error "No board selected — set CONFIG_BOARD_* via menuconfig or sdkconfig.defaults"
 #endif
 
 #define LEDC_TIMER      LEDC_TIMER_0
