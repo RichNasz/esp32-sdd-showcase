@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-03-08 | Agent: Claude Code
      ================================================ -->
 
 # Creating New Board Specs
@@ -206,4 +206,4 @@ When a board spec is corrected or updated:
 3. Regenerate the affected example with `esp32-sdd-full-project-generator`.
 4. Run `esp32-sdd-project-validator` on the regenerated example to confirm structural compliance.
 
-> **blinky follow-up**: The XIAO ESP32S3 LED is GPIO21 (active LOW), not GPIO10 as the initial placeholder stated. The `examples/blinky/specs/CodingSpec.md` and `main.c` require a regeneration pass to correct this. See the follow-up task note in the project's issue tracker.
+> **blinky reference**: The XIAO ESP32S3 LED is GPIO21 (active LOW). The `examples/blinky` example has been regenerated with the correct pin and now also supports XIAO ESP32-C5 (GPIO 27, active LOW) and XIAO ESP32-C6 (GPIO 15, active LOW).

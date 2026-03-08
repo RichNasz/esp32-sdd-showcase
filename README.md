@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-23 | Agent: Claude Code
+     Date: 2026-03-08 | Agent: Claude Code
      ================================================ -->
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -59,7 +59,7 @@ idf.py build flash monitor
 
 - [ESP-IDF v5.x](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/) — installed and sourced in your shell
 - [Claude Code](https://claude.ai/code) — for activating skills and driving the SDD workflow
-- [XIAO ESP32S3](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html) or compatible ESP32-S3 board (most examples also support HUZZAH32 via Kconfig)
+- One of the supported boards: [Seeed XIAO ESP32S3](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html), [Seeed XIAO ESP32-C5](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C5-p-5890.html), [Seeed XIAO ESP32-C6](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C6-p-5884.html), or [Adafruit HUZZAH32](https://www.adafruit.com/product/3405) — board selection is a Kconfig option
 
 ## Examples
 

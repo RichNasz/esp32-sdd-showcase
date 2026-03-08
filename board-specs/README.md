@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-03-08 | Agent: Claude Code
      ================================================ -->
 
 # board-specs/
@@ -16,7 +16,7 @@ Board specs are organised by vendor to keep the catalog navigable as it grows:
 |---|---|---|
 | `adafruit/` | Adafruit Industries | HUZZAH32, Feather ESP32-S2, Feather ESP32-S3, MatrixPortal S3 |
 | `espressif/` | Espressif Systems | ESP32-DevKitC, ESP32-S3-DevKitC-1, ESP32-C3-DevKitM-1, ESP-WROVER-KIT |
-| `seeed/` | Seeed Studio | XIAO ESP32C3, XIAO ESP32S3, Wio-Terminal |
+| `seeed/` | Seeed Studio | XIAO ESP32S3, XIAO ESP32-C5, XIAO ESP32-C6 |
 | `lilygo/` | LILYGO | TTGO T-Display, T-Watch S3, T-SIM7600G |
 | `m5stack/` | M5Stack | M5StickC Plus, M5Stack Core2, M5Stamp C3 |
 | `olimex/` | Olimex | ESP32-EVB, ESP32-GATEWAY, ESP32-POE |

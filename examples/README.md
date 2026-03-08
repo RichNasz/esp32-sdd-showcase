@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-03-08 | Agent: Claude Code
      ================================================ -->
 
 # examples/
@@ -55,7 +55,7 @@ idf.py set-target esp32s3
 idf.py build flash monitor
 ```
 
-Replace `esp32` with `esp32s2`, `esp32s3`, or `esp32c3` as appropriate for your board.
+Replace `esp32s3` with `esp32`, `esp32s2`, `esp32c3`, `esp32c5`, or `esp32c6` as appropriate for your board.
 
 ### VS Code / Cursor + ESP-IDF Extension
 

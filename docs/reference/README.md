@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-03-08 | Agent: Claude Code
      ================================================ -->
 
 # Reference
@@ -29,12 +29,12 @@ All reference material targets the ESP-IDF version pinned in `shared-specs/esp-i
 
 Several features differ across ESP32 family members:
 
-| Feature | ESP32 | ESP32-S2 | ESP32-S3 | ESP32-C3 |
-|---|---|---|---|---|
-| Hardware AES | Yes | Yes | Yes | Yes |
-| Hardware RSA | Yes | Yes | Yes | No |
-| BLE 5.0 | BLE 4.2 | No BLE | BLE 5.0 | BLE 5.0 |
-| Touch pads | 10 | 14 | 14 | No |
-| ULP | FSM | FSM | RISC-V | No |
+| Feature | ESP32 | ESP32-S2 | ESP32-S3 | ESP32-C3 | ESP32-C5 | ESP32-C6 |
+|---|---|---|---|---|---|---|
+| Hardware AES | Yes | Yes | Yes | Yes | Yes | Yes |
+| Hardware RSA | Yes | Yes | Yes | No | No | No |
+| BLE 5.0 | BLE 4.2 | No BLE | BLE 5.0 | BLE 5.0 | BLE 5.3 | BLE 5.3 |
+| Touch pads | 10 | 14 | 14 | No | No | No |
+| ULP | FSM | FSM | RISC-V | No | No | No |
 
 Consult the relevant board spec in `board-specs/` for your exact module.
