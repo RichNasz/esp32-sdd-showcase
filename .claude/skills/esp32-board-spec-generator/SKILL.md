@@ -29,4 +29,13 @@ MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before do
 3. Cross-reference against `shared-specs/esp-idf-version.md` for any platform-level constraints.
 4. Generate `board-specs/<vendor>/<board-name>.md` using the standard section layout from `templates/BoardSpec.template.md`.
 5. Add the standard agent-generated header to the output file.
-6. Output: file path written and a one-line summary of key specs (chip variant, flash, PSRAM, antenna).
+6. Check `shared-specs/esp-idf-version.md`: if the board's `idf.py` target (e.g. `esp32c5`) is not present in the Supported Target SoCs table, append a row now with the SoC name, status `Supported`, and a brief description (chip architecture + standout feature + target name). Do not wait for the user to request this — update the file as part of this skill run.
+7. Output: file path written and a one-line summary of key specs (chip variant, flash, PSRAM, antenna).
+
+## Markdown Formatting Requirements
+
+All generated board spec files must pass markdownlint with zero warnings:
+
+- **Table separators**: use spaced style `| --- | --- |` — never compact `|---|---|`. The separator row must match the spacing of the content rows.
+- **Lists**: always surround bullet and numbered lists with blank lines (one blank line before the first item, one blank line after the last item).
+- **Fenced code blocks**: always specify a language identifier (e.g. ` ```sh `, ` ```ini `, ` ```c `). Never use bare ` ``` ` without a language.

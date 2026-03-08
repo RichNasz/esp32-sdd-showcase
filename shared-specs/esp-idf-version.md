@@ -27,6 +27,7 @@
 | ESP32-C3 | Supported | RISC-V single-core; target `esp32c3` |
 | ESP32-C6 | Supported | RISC-V dual-core + 802.15.4; target `esp32c6` |
 | ESP32-H2 | Supported | RISC-V + 802.15.4 only (no Wi-Fi); target `esp32h2` |
+| ESP32-C5 | Supported | RISC-V single-core 240 MHz; dual-band Wi-Fi 6 (2.4 + 5 GHz) + BT 5 LE; target `esp32c5` |
 
 Each example's `FunctionalSpec.md` must declare which targets it supports. Multi-target examples must compile cleanly for every declared target.
 
