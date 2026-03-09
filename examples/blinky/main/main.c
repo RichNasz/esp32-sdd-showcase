@@ -8,24 +8,14 @@
 
 static const char *TAG = "blinky";
 
-#if CONFIG_BOARD_ADAFRUIT_HUZZAH32
-#define LED_GPIO        13
-#define LEDC_MODE       LEDC_HIGH_SPEED_MODE
-#define LED_ACTIVE_LOW  0
-#elif CONFIG_BOARD_SEEED_XIAO_ESP32S3
-#define LED_GPIO        21
-#define LEDC_MODE       LEDC_LOW_SPEED_MODE
-#define LED_ACTIVE_LOW  1
-#elif CONFIG_BOARD_SEEED_XIAO_ESP32C5
-#define LED_GPIO        27
-#define LEDC_MODE       LEDC_LOW_SPEED_MODE
-#define LED_ACTIVE_LOW  1
-#elif CONFIG_BOARD_SEEED_XIAO_ESP32C6
-#define LED_GPIO        15
-#define LEDC_MODE       LEDC_LOW_SPEED_MODE
-#define LED_ACTIVE_LOW  1
+#define LED_GPIO   CONFIG_EXAMPLE_LED_GPIO
+#define LED_ON     CONFIG_EXAMPLE_LED_ACTIVE_LEVEL
+#define LED_OFF    (1 - CONFIG_EXAMPLE_LED_ACTIVE_LEVEL)
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+#define LEDC_MODE LEDC_HIGH_SPEED_MODE
 #else
-#error "No board selected — set CONFIG_BOARD_* via menuconfig or sdkconfig.defaults"
+#define LEDC_MODE LEDC_LOW_SPEED_MODE
 #endif
 
 #define LEDC_TIMER      LEDC_TIMER_0
@@ -35,8 +25,8 @@ static const char *TAG = "blinky";
 #define FADE_TIME_MS    2000
 
 #define DUTY_MAX  ((1 << LEDC_RESOLUTION) - 1)
-#define DUTY_ON   (LED_ACTIVE_LOW ? 0 : DUTY_MAX)
-#define DUTY_OFF  (LED_ACTIVE_LOW ? DUTY_MAX : 0)
+#define DUTY_ON   (LED_ON  ? DUTY_MAX : 0)
+#define DUTY_OFF  (LED_OFF ? DUTY_MAX : 0)
 
 /* true  = currently fading toward DUTY_ON  (brightening)
    false = currently fading toward DUTY_OFF (dimming)   */
@@ -62,7 +52,7 @@ void app_main(void)
 {
     ESP_LOGI(TAG, "Board GPIO=%d  freq=%d Hz  resolution=%d-bit  polarity=active-%s",
              LED_GPIO, LEDC_FREQ_HZ, LEDC_RESOLUTION,
-             LED_ACTIVE_LOW ? "LOW" : "HIGH");
+             LED_ON ? "HIGH" : "LOW");
     ESP_LOGI(TAG, "Breathing period: %d ms", FADE_TIME_MS * 2);
 
     ledc_timer_config_t timer = {

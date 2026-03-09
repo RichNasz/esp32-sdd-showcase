@@ -10,9 +10,10 @@
 
 Baseline SDD example demonstrating the full spec-to-firmware pipeline. The ESP-IDF LEDC
 driver drives a smooth 4-second breathing effect on the onboard status LED of whichever
-board is selected. Board selection is a Kconfig option — GPIO number, LEDC speed mode, and
-LED polarity are all resolved at compile time via `CONFIG_BOARD_*` macros. No hard-coded
-pin numbers, no busy-wait loops.
+board is selected. Board selection is driven by per-target `sdkconfig.defaults.<target>` files that
+automatically inject the correct LED GPIO, polarity, and console config when the user
+runs `idf.py set-target <chip>`. GPIO number, LEDC speed mode, and LED polarity are all
+resolved at compile time — no hard-coded pin numbers, no busy-wait loops.
 
 ## Prerequisites
 
@@ -62,14 +63,10 @@ idf.py set-target esp32c6
 idf.py build flash monitor
 ```
 
-> **Switching boards — two required steps, in order:**
->
-> 1. `idf.py set-target <chip>` — e.g. `idf.py set-target esp32c6`. This clears the
->    stale `sdkconfig`; skipping this step leaves the old board's GPIO in effect and
->    the LED will not respond.
-> 2. `idf.py menuconfig` → **Target board** → select the new board → Save & Exit.
->
-> Then rebuild and reflash. Never edit generated source files directly.
+> **Switching boards:** `idf.py set-target <chip>` is the only step needed.
+> The per-target `sdkconfig.defaults.<target>` file automatically injects the correct
+> LED GPIO, polarity, and console config. Then rebuild and reflash.
+> Never edit generated source files directly.
 
 ### Opening in VS Code / Cursor
 
@@ -133,9 +130,10 @@ The LED breathes smoothly through a full 4-second cycle (2 s up, 2 s down), inde
 - `ledc_fade_func_install()` + `ledc_set_fade_with_time()` — smooth fade without CPU polling
 - `ledc_cb_register()` — interrupt-driven fade completion callback chaining the next fade
 - `LEDC_HIGH_SPEED_MODE` (ESP32) vs `LEDC_LOW_SPEED_MODE` (ESP32-S3, ESP32-C5) — speed mode differences per SoC family
-- Kconfig `choice` block in `main/Kconfig.projbuild` for multi-board selection
-- `CONFIG_BOARD_*` macros for compile-time GPIO and LEDC mode resolution
-- `LED_ACTIVE_LOW` / `DUTY_ON` / `DUTY_OFF` — active LED polarity abstraction
+- Per-target `sdkconfig.defaults.<target>` files for zero-step board switching
+- `EXAMPLE_LED_GPIO` / `EXAMPLE_LED_ACTIVE_LEVEL` Kconfig int symbols for compile-time GPIO and polarity
+- `#ifdef CONFIG_IDF_TARGET_ESP32` for LEDC speed mode — the canonical ESP-IDF idiom
+- `DUTY_ON` / `DUTY_OFF` — active LED polarity abstraction
 - `CONFIG_ESP_CONSOLE_USB_CDC=y` — required for serial output on XIAO ESP32S3 (native USB OTG)
 - `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` — required for serial output on XIAO ESP32-C5 (USB Serial/JTAG controller, distinct from S3's USB OTG)
 
@@ -195,7 +193,7 @@ Testing philosophy: automated first, manual only when hardware observation is un
    Observe the amber LED (GPIO 21): confirm the first fade is dark → bright (active-LOW polarity correct), then smooth continuous breathing. Check serial output shows `Fade up` on first cycle, then alternating `Fade up` / `Fade down`.
 
 3. **Board switch regression (T-M3)**
-   Repeat T-M1 and T-M2 after switching boards via `idf.py menuconfig`. Both boards must pass on every switch.
+   Repeat T-M1 and T-M2 after switching boards via `idf.py set-target <chip>` (no menuconfig needed). Both boards must pass on every switch.
 
 Full test details: [specs/TestSpec.md](specs/TestSpec.md)
 

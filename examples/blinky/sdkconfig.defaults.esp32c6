@@ -1,0 +1,5 @@
+# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator
+# Seeed XIAO ESP32-C6: GPIO 15, active LOW, USB Serial/JTAG console
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_EXAMPLE_LED_GPIO=15
+CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=0

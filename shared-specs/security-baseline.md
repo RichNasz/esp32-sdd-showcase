@@ -27,7 +27,7 @@ These apply regardless of whether an example is production-targeted.
 | No hardcoded credentials | Wi-Fi PSK, API keys, and tokens must come from NVS or Kconfig (not `#define` in source) |
 | No debug UART credential leakage | Credentials must never be printed via `ESP_LOGI` or any log level |
 | Input validation at system boundaries | All data received over UART, BLE, or network must be length-checked before use |
-| Stack overflow protection | `CONFIG_ESP_SYSTEM_CHECK_STACKOVERFLOW_CANARY=y` in all sdkconfig.defaults |
+| Stack overflow protection | `CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y` in all sdkconfig.defaults |
 | Watchdog enabled | `CONFIG_ESP_TASK_WDT_EN=y`; see `coding-conventions.md` |
 
 ---

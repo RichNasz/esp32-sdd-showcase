@@ -14,8 +14,10 @@ ESP-IDF LEDC driver to drive a smooth breathing effect on the onboard status LED
 - Breathe the onboard status LED of whichever board is selected.
 - Breathing period: 4 seconds (2 s fade-up, 2 s fade-down), continuous.
 - Use hardware PWM (ESP-IDF `ledc` driver) — no busy-wait loops.
-- Board selection is a Kconfig option; changing it and regenerating must
-  produce a correct, buildable project for the chosen target.
+- Board selection is driven by per-target `sdkconfig.defaults.<target>` files that
+  automatically inject the correct LED GPIO, polarity, and console config when the
+  user runs `idf.py set-target <chip>`. No menuconfig step is required.
+- `idf.py set-target <chip>` alone is sufficient — no menuconfig step required.
 
 ## Hardware Dependencies
 - Board-spec: board-specs/adafruit/huzzah32.md (ESP32, LED GPIO 13)

@@ -1,0 +1,4 @@
+# AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator
+# Adafruit HUZZAH32: GPIO 13, active HIGH, UART console (CP2104 bridge — no extra config)
+CONFIG_EXAMPLE_LED_GPIO=13
+CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=1

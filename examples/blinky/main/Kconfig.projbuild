@@ -1,17 +1,18 @@
 # AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator
-choice BOARD_SELECT
-    prompt "Target board"
-    default BOARD_SEEED_XIAO_ESP32S3
+menu "Blinky Configuration"
+    config EXAMPLE_LED_GPIO
+        int "LED GPIO number"
+        default 21
+        range 0 48
+        help
+            GPIO of the onboard user LED.
+            Overridden per-target via sdkconfig.defaults.<target>.
 
-    config BOARD_SEEED_XIAO_ESP32S3
-        bool "Seeed XIAO ESP32S3"
-
-    config BOARD_ADAFRUIT_HUZZAH32
-        bool "Adafruit HUZZAH32 (ESP32 Feather)"
-
-    config BOARD_SEEED_XIAO_ESP32C5
-        bool "Seeed XIAO ESP32-C5"
-
-    config BOARD_SEEED_XIAO_ESP32C6
-        bool "Seeed XIAO ESP32-C6"
-endchoice
+    config EXAMPLE_LED_ACTIVE_LEVEL
+        int "LED active level (0=active-LOW, 1=active-HIGH)"
+        default 0
+        range 0 1
+        help
+            Logic level that turns the LED ON.
+            0=active LOW (XIAO boards), 1=active HIGH (HUZZAH32).
+endmenu

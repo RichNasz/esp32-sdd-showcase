@@ -13,7 +13,7 @@
 - Always respect the permanent example structure in specs/example-project-structure-spec.md
 - Always reference board-specs/ files instead of hard-coding pins.
 
-## Key Lessons Learned from Real AI Generation (Updated Feb 2026)
+## Key Lessons Learned from Real AI Generation (Updated Mar 2026)
 - Precise board references + board-specs/*.md dramatically reduce hallucinations.
 - Explicit power budgets, wakeup sources, and peripheral constraints in FunctionalSpec.md are essential for ESP32.
 - When switching boards (e.g. HUZZAH32 ↔ XIAO ESP32S3), change only the one-line board selector and regenerate.
@@ -25,6 +25,16 @@
   root. ESP-IDF only auto-discovers Kconfig.projbuild inside component dirs. Placing it at
   the root silently drops all its symbols, causing #error guards and undeclared-identifier
   cascades at compile time. (Feb 2026)
+- **CMakeLists.txt ordering: `include(project.cmake)` BEFORE `project()`**. ESP-IDF injects
+  the cross-compiler toolchain via project.cmake, which must be loaded before CMake's
+  `project()` call initialises the compiler. Reversing the order causes CMake to detect the
+  host system compiler (Apple Clang on macOS) instead of the RISC-V/Xtensa cross-compiler,
+  silently breaking the build. The cmake-conventions.md spec has this wrong — always use:
+  `include($ENV{IDF_PATH}/tools/cmake/project.cmake)` then `project(name)`. (Mar 2026)
+- **Stack overflow Kconfig symbol is `FREERTOS_CHECK_STACKOVERFLOW_CANARY`**, not
+  `ESP_SYSTEM_CHECK_STACKOVERFLOW_CANARY`. The latter does not exist in ESP-IDF 5.x and
+  produces an "unknown kconfig symbol" warning that silently drops the safety setting.
+  Use `CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y` in sdkconfig.defaults. (Mar 2026)
 
 ## Required Workflow When Something Goes Wrong
 1. Read this file.
