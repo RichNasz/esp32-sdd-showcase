@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 (updated) | Agent: Claude Code
+     Date: 2026-03-09 | Agent: Claude Code
      ================================================ -->
 
 # ESP32 SDD Showcase — Full Documentation
@@ -81,7 +81,7 @@ See [guides/using-with-ai-agents.md](guides/using-with-ai-agents.md) for full se
 
 ## Contributing
 
-Only `specs/` and `examples/*/FunctionalSpec.md` / `examples/*/CodingSpec.md` are open to human edits. Everything else is agent-generated. After any spec change:
+Only `specs/`, `shared-specs/`, and `examples/*/specs/FunctionalSpec.md` / `examples/*/specs/CodingSpec.md` / `examples/*/specs/TestSpec.md` are open to human edits. Everything else is agent-generated. After any spec change:
 
 > "Activate esp32-sdd-documentation-generator and rebuild all documentation."
 
