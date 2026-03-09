@@ -1,0 +1,21 @@
+# ================================================
+# AGENT-GENERATED — DO NOT EDIT BY HAND
+# Generated from specs/ using esp32-sdd-full-project-generator skill
+# Date: 2026-03-09 | Agent: Claude Code
+# ================================================
+#
+# Common settings applied to all supported targets.
+# Per-target files (sdkconfig.defaults.<target>) are merged automatically
+# by ESP-IDF when you run: idf.py set-target <target>
+#
+
+# Hardware AES acceleration — the primary point of this example
+CONFIG_MBEDTLS_HARDWARE_AES=y
+
+# Safety and reliability
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+
+# Logging: INFO level for production-representative output
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_DEFAULT_LEVEL=3

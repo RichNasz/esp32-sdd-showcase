@@ -1,0 +1,14 @@
+# ================================================
+# AGENT-GENERATED — DO NOT EDIT BY HAND
+# Target: ESP32 (Adafruit HUZZAH32)
+# Board-spec: board-specs/adafruit/huzzah32.md
+# ================================================
+
+# Console via CP2104 USB-UART bridge — no special CONFIG needed.
+# Default UART console is used (CONFIG_ESP_CONSOLE_UART_DEFAULT=y).
+
+# LED: GPIO 13, active HIGH (onboard red LED)
+# Note: GPIO 13 is also SPI MOSI on the default SPI bus; do not use SPI
+# and the LED simultaneously without remapping SPI pins.
+CONFIG_EXAMPLE_LED_GPIO=13
+CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=1

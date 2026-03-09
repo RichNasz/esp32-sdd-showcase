@@ -1,0 +1,12 @@
+# ================================================
+# AGENT-GENERATED — DO NOT EDIT BY HAND
+# Target: ESP32-C5 (Seeed XIAO ESP32-C5)
+# Board-spec: board-specs/seeed/xiao-esp32c5.md
+# ================================================
+
+# USB Serial/JTAG console (ESP32-C5 built-in USB Serial/JTAG controller)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# LED: GPIO 27, active LOW (onboard yellow LED)
+CONFIG_EXAMPLE_LED_GPIO=27
+CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=0

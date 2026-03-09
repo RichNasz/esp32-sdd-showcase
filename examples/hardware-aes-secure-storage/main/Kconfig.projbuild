@@ -1,0 +1,29 @@
+# AGENT-GENERATED — DO NOT EDIT BY HAND
+# Generated from specs/ using esp32-sdd-full-project-generator skill
+# Date: 2026-03-09 | Agent: Claude Code
+#
+# NOTE: Kconfig.projbuild must live in main/ (ESP-IDF requirement).
+# Placing it at the project root silently drops all symbols.
+# See shared-specs/AIGenLessonsLearned.md.
+
+menu "Hardware AES Secure Storage"
+
+    config EXAMPLE_LED_GPIO
+        int "LED GPIO number"
+        default 21
+        range 0 48
+        help
+            GPIO number of the onboard user LED.
+            Default 21 = Seeed XIAO ESP32S3 (orange LED).
+            Overridden per-target via sdkconfig.defaults.<target>.
+
+    config EXAMPLE_LED_ACTIVE_LEVEL
+        int "LED active level (0 = active-LOW, 1 = active-HIGH)"
+        default 0
+        range 0 1
+        help
+            Logic level that turns the LED ON.
+            0 = active LOW (Seeed XIAO boards: S3, C6, C5).
+            1 = active HIGH (Adafruit HUZZAH32).
+
+endmenu

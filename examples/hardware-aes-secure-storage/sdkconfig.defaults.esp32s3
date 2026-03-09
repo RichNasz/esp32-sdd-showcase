@@ -1,0 +1,12 @@
+# ================================================
+# AGENT-GENERATED — DO NOT EDIT BY HAND
+# Target: ESP32-S3 (Seeed XIAO ESP32S3)
+# Board-spec: board-specs/seeed/xiao-esp32s3.md
+# ================================================
+
+# USB CDC console (ESP32-S3 uses native USB OTG)
+CONFIG_ESP_CONSOLE_USB_CDC=y
+
+# LED: GPIO 21, active LOW (onboard orange LED)
+CONFIG_EXAMPLE_LED_GPIO=21
+CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=0

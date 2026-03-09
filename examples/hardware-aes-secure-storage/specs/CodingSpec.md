@@ -44,8 +44,8 @@ so callers never need to understand mbedTLS return values.
 - Self-test failure must be reported visually (LED pattern) and over serial, but must not
   abort the device. An example should not crash on a test bench.
 - The README must explicitly note that this example demonstrates the hardware crypto API,
-  not production key lifecycle management. Production systems should use eFuse key binding
-  or flash encryption, not plaintext NVS key storage.
+  not production key lifecycle management. Production systems should use flash encryption,
+  not plaintext NVS key storage.
 
 ## Gotchas
 
