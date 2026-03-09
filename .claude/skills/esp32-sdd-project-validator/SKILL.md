@@ -9,7 +9,7 @@ keywords: sdd, esp32, validator, structure, compliance, audit
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-03-09 | Agent: Claude Code
      ================================================ -->
 
 # ESP32 SDD Project Validator
@@ -101,14 +101,22 @@ Every generated `.md` file at the example root (`README.md`) must begin with:
 
 **FAIL** if the call is absent.
 
-### CHECK-11 — Multi-board guard (if Kconfig.projbuild exists)
-If `Kconfig.projbuild` is present:
-- It must contain a `choice` block.
-- `main/main.c` must contain at least one `#if CONFIG_BOARD_` guard and a matching `#error` fallback.
-- The `#error` message must instruct the user to set `CONFIG_BOARD_*` in `sdkconfig.defaults`.
+### CHECK-11 — Multi-board support (if multiple boards declared in FunctionalSpec.md)
+If `specs/FunctionalSpec.md` contains a Supported Boards table with more than one entry:
+- A per-target `sdkconfig.defaults.<target>` file must exist for every target listed
+  (e.g. `sdkconfig.defaults.esp32s3`, `sdkconfig.defaults.esp32c6`).
+- Each per-target file must set `EXAMPLE_LED_GPIO` and `EXAMPLE_LED_ACTIVE_LEVEL` (or
+  equivalent board-specific Kconfig int symbols).
+- `main/main.c` must NOT use `#if CONFIG_BOARD_` guards — board constants come from
+  Kconfig int symbols injected by the per-target sdkconfig file.
+- LEDC speed mode differences (ESP32 high-speed vs all others low-speed) must use
+  `#ifdef CONFIG_IDF_TARGET_ESP32`, not a board choice guard.
+- `Kconfig.projbuild` (if present) must define the int symbols used by the per-target
+  files (e.g. `EXAMPLE_LED_GPIO`, `EXAMPLE_LED_ACTIVE_LEVEL`), not a `choice` block.
 
-**FAIL** if `Kconfig.projbuild` exists but `main.c` has no `#if CONFIG_BOARD_` guard.
-**FAIL** if no `#error` fallback exists.
+**FAIL** if any board listed in FunctionalSpec.md is missing its `sdkconfig.defaults.<target>` file.
+**FAIL** if `main.c` contains `#if CONFIG_BOARD_` guards (old pattern — regenerate).
+**FAIL** if `Kconfig.projbuild` contains a `choice` block for board selection (old pattern — regenerate).
 
 ### CHECK-12 — Board-spec references in FunctionalSpec.md
 If any board is mentioned in `FunctionalSpec.md`, the corresponding `board-specs/<vendor>/<board>.md` file must exist.
@@ -117,7 +125,10 @@ If any board is mentioned in `FunctionalSpec.md`, the corresponding `board-specs
 
 ### CHECK-13 — No extra top-level files
 Only these names are permitted at the example root:
-`specs/`, `main/`, `CMakeLists.txt`, `sdkconfig.defaults`, `README.md`, `.gitignore`, `Kconfig.projbuild`, `idf_component.yml`, `components/`, `build/`
+`specs/`, `main/`, `CMakeLists.txt`, `sdkconfig.defaults`, `sdkconfig.defaults.<target>`
+(e.g. `sdkconfig.defaults.esp32`, `sdkconfig.defaults.esp32s3`, `sdkconfig.defaults.esp32c5`,
+`sdkconfig.defaults.esp32c6`), `README.md`, `.gitignore`, `Kconfig.projbuild`,
+`idf_component.yml`, `components/`, `build/`
 
 **WARNING** (not FAIL) for any other file at the root — report the unexpected filename so the user can decide.
 
