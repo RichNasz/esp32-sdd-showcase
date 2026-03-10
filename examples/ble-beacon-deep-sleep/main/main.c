@@ -11,12 +11,17 @@
  * followed by immediate deep sleep.
  *
  * Cycle per wake:
- *   1. gpio_hold_dis → determine wakeup cause → increment RTC counters
- *   2. LED on → BLE stack init → start NimBLE host task
- *   3. sync_cb fires → log BLE MAC address → start non-connectable advertising
- *   4. 10 s esp_timer fires → ble_gap_adv_stop → semaphore give
- *   5. app_main unblocks → BLE teardown (5-step) → LED off → gpio_hold_en
- *   6. Configure sleep sources (20 s timer + GPIO button on S3/ESP32) → esp_deep_sleep_start
+ *   1. gpio_hold_dis -> determine wakeup cause -> increment RTC counters
+ *   2. LED on -> NVS init -> BLE stack init -> start NimBLE host task
+ *   3. sync_cb fires -> log BLE MAC address -> start non-connectable advertising
+ *   4. 10 s esp_timer fires -> ble_gap_adv_stop -> semaphore give
+ *   5. app_main unblocks -> BLE teardown -> LED off -> gpio_hold_en
+ *   6. Configure sleep sources (10 s timer + GPIO button on S3/ESP32) -> esp_deep_sleep_start
+ *
+ * BLE teardown sequence (3 calls — see shared-specs/ble-patterns.md):
+ *   ble_gap_adv_stop() -> nimble_port_stop() -> nimble_port_deinit()
+ *   nimble_port_deinit() handles controller disable/deinit internally on ESP-IDF 5.5.x.
+ *   Do NOT call esp_bt_controller_disable/deinit explicitly — causes double-deinit crash.
  *
  * Board-specific configuration is resolved at compile time via Kconfig symbols
  * set in sdkconfig.defaults.<target>. Use `idf.py set-target <target>` to select.
@@ -200,10 +205,14 @@ static void adv_timer_cb(void *arg)
 /* -----------------------------------------------------------------------
  * BLE stack teardown — MUST complete before esp_deep_sleep_start()
  *
- * Order is critical (see shared-specs/ble-patterns.md):
- *   nimble_port_stop() posts an event to the host task and BLOCKS until
- *   the task exits. Calling esp_bt_controller_disable() before the host
- *   task exits causes an assertion in the controller.
+ * 3-step sequence (see shared-specs/ble-patterns.md):
+ *   1. ble_gap_adv_stop()  — idempotent; safe if already stopped by timer
+ *   2. nimble_port_stop()  — signals host task to exit; blocks until done
+ *   3. nimble_port_deinit() — frees NimBLE resources + controller disable/deinit
+ *
+ * In ESP-IDF 5.5.x, nimble_port_deinit() internally handles
+ * esp_bt_controller_disable() and esp_bt_controller_deinit().
+ * Do NOT call those APIs explicitly — causes double-deinit crash.
  * ----------------------------------------------------------------------- */
 static void ble_stack_teardown(void)
 {
@@ -313,7 +322,9 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    /* ---- Initialise NimBLE (controller + host) ---- */
+    /* ---- Initialise NimBLE (controller + host) ----
+     * nimble_port_init() handles esp_bt_controller_init/enable internally.
+     * Do NOT call those APIs explicitly — causes double-init crash. */
     ESP_ERROR_CHECK(nimble_port_init());
 
     ble_hs_cfg.sync_cb  = ble_sync_cb;

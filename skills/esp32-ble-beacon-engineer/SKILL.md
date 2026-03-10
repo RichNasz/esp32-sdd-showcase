@@ -34,11 +34,15 @@ Any time a FunctionalSpec requires BLE advertising, beaconing, manufacturer data
      CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
      CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=n
      CONFIG_BT_NIMBLE_MAX_CONNECTIONS=0
+     CONFIG_BT_NIMBLE_SECURITY_ENABLE=n
      ```
+     The `CONFIG_BT_NIMBLE_SECURITY_ENABLE=n` line is mandatory — without it, broadcaster-only builds fail with `undefined reference to 'ble_sm_deinit'` (ESP-IDF 5.5.x bug). A non-connectable broadcaster has no use for the security manager.
    - For Bluedroid (GATT/Classic use case): include `CONFIG_BT_BLUEDROID_ENABLED=y` and disable NimBLE keys. Consult `shared-specs/ble-patterns.md` for the full symbol list.
 
 4. **Generate advertising init/start sequence** in `main/ble_beacon.c`:
-   - Call order: `esp_bt_controller_init()` → `esp_bt_controller_enable(ESP_BT_MODE_BLE)` → `nimble_port_init()` → set `ble_hs_cfg.sync_cb` → `nimble_port_freertos_init(ble_host_task)`
+   - **Prerequisite**: `nvs_flash_init()` must be called before any BLE API. The BLE controller stores PHY calibration data in NVS — missing this causes `BLE_INIT: controller init failed`. Also add `nvs_flash` to `REQUIRES` in `main/CMakeLists.txt`.
+   - Call order: `nvs_flash_init()` → `nimble_port_init()` → set `ble_hs_cfg.sync_cb` → `nimble_port_freertos_init(ble_host_task)`
+   - **Important**: Do NOT call `esp_bt_controller_init()` or `esp_bt_controller_enable()` explicitly. In ESP-IDF 5.5.x, `nimble_port_init()` handles both internally. Calling them before `nimble_port_init()` causes a double-init crash. No `#include "esp_bt.h"` is needed.
    - In the sync callback, configure advertising parameters:
      - `conn_mode = BLE_GAP_CONN_MODE_NON` (non-connectable)
      - `disc_mode = BLE_GAP_DISC_MODE_NON` (non-discoverable) unless the spec requires discoverability
@@ -52,17 +56,17 @@ Any time a FunctionalSpec requires BLE advertising, beaconing, manufacturer data
    - On timer expiry (timer callback runs in timer task context): call `ble_gap_adv_stop()` then `xSemaphoreGive(adv_complete_sem)`.
    - In `app_main`: after `nimble_port_freertos_init()`, block on `xSemaphoreTake(adv_complete_sem, portMAX_DELAY)`.
    - **Never** use `vTaskDelay` alone as the advertising timeout — NimBLE callbacks run on the NimBLE host task, not on `app_main`, so `vTaskDelay` in `app_main` does not block advertising correctly.
+   - **Task WDT note**: If the advertising window exceeds the default task watchdog timeout (5 s), unsubscribe `app_main`'s task from the WDT before blocking on the semaphore and resubscribe after: `esp_task_wdt_delete(NULL)` before `xSemaphoreTake`, `esp_task_wdt_add(NULL)` after.
 
 6. **Generate complete BLE stack teardown sequence** (mandatory before deep sleep):
    Execute in this exact order after the semaphore is taken:
    ```c
    ble_gap_adv_stop();          // idempotent — safe to call again
    nimble_port_stop();          // signals host task to exit
-   nimble_port_deinit();        // frees NimBLE resources
-   esp_bt_controller_disable(); // powers down radio
-   esp_bt_controller_deinit();  // releases controller memory
+   nimble_port_deinit();        // frees NimBLE resources + controller disable/deinit
    ```
-   Skipping any step leaves the BLE radio powered during deep sleep, destroying the power budget. Reference: `nimble/power_save/main/main.c` in ESP-IDF examples.
+   **Important**: Do NOT call `esp_bt_controller_disable()` or `esp_bt_controller_deinit()` explicitly. In ESP-IDF 5.5.x, `nimble_port_deinit()` handles both internally. Calling them after `nimble_port_deinit()` causes a double-deinit crash. No `#include "esp_bt.h"` is needed.
+   Skipping teardown leaves the BLE radio powered during deep sleep, destroying the power budget.
 
 7. **Coordinate with deep sleep** (if FunctionalSpec specifies a wakeup strategy):
    - Teardown sequence (step 6) must complete before `esp_deep_sleep_start()` is called.

@@ -53,9 +53,9 @@ timer from button wakeup.
 
 ## Non-Functional Requirements
 
-- The BLE stack must be completely torn down — including controller deinitialization and memory
-  release — before entering deep sleep. Leaving the controller running drains power and can
-  cause instability on the next wake cycle.
+- The BLE stack must be completely torn down before entering deep sleep. The
+  `esp32-ble-beacon-engineer` skill owns the exact teardown sequence. Leaving the radio
+  running drains power and can cause instability on the next wake cycle.
 - If advertising fails to start, the device must log the error and proceed directly to deep
   sleep. It must never block indefinitely waiting for BLE resources.
 - The user LED must be turned on when advertising starts and turned off after advertising stops,
@@ -69,14 +69,16 @@ timer from button wakeup.
 
 ## Gotchas
 
-- NimBLE requires CONFIG_BT_ENABLED, CONFIG_BT_NIMBLE_ENABLED, and CONFIG_BT_CONTROLLER_ENABLED
-  in sdkconfig. Missing any one of these causes a link-time error that is difficult to diagnose
-  from the error message alone.
+- NimBLE requires CONFIG_BT_ENABLED, CONFIG_BT_NIMBLE_ENABLED, CONFIG_BT_CONTROLLER_ENABLED,
+  and CONFIG_BT_NIMBLE_SECURITY_ENABLE=n in sdkconfig. Missing the first three causes a
+  link-time error; missing the last causes `undefined reference to 'ble_sm_deinit'` on
+  broadcaster-only builds (ESP-IDF 5.5.x bug).
 - The advertising-complete callback fires on the NimBLE task stack. Synchronisation with
   app_main must use a semaphore or event group — do not attempt to call blocking sleep APIs
   from within the callback.
-- esp_bt_controller_deinit() must be called before entering deep sleep. Failure to do so leaves
-  the BLE controller powered, with a significant impact on the device's power budget.
+- The full BLE teardown sequence (see `esp32-ble-beacon-engineer` skill step 6) must complete
+  before entering deep sleep. Failure to tear down leaves the radio powered, with a significant
+  impact on the device's power budget.
 
 ## File Layout (non-standard files)
 

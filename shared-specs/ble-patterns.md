@@ -77,21 +77,13 @@ ble_gap_adv_stop();
 int rc = nimble_port_stop();
 assert(rc == 0);
 
-/* 3. Free NimBLE host resources */
+/* 3. Free NimBLE host resources + controller disable/deinit */
 nimble_port_deinit();
-
-/* 4. Power down the BLE radio */
-esp_err_t err = esp_bt_controller_disable();
-ESP_ERROR_CHECK(err);
-
-/* 5. Release controller memory back to heap */
-err = esp_bt_controller_deinit();
-ESP_ERROR_CHECK(err);
 ```
 
-Reference: `nimble/power_save/main/main.c` in ESP-IDF examples.
+**Important (ESP-IDF 5.5.x)**: Do NOT call `esp_bt_controller_disable()` or `esp_bt_controller_deinit()` explicitly. `nimble_port_deinit()` handles both internally. Calling them after `nimble_port_deinit()` causes a double-deinit crash. No `#include "esp_bt.h"` is needed for NimBLE projects.
 
-**Why this order matters**: `nimble_port_stop()` posts an event to the NimBLE host task and blocks until the task exits. Calling `esp_bt_controller_disable()` before the host task exits causes an assertion in the controller.
+**Why this order matters**: `nimble_port_stop()` posts an event to the NimBLE host task and blocks until the task exits. `nimble_port_deinit()` then disables and deinits the controller internally.
 
 ---
 
@@ -145,7 +137,13 @@ void app_main(void)
 {
     s_adv_done = xSemaphoreCreateBinary();
 
-    /* ... BLE init, set sync_cb, nimble_port_freertos_init() ... */
+    /* NVS is required before any BLE API — PHY calibration is stored in NVS */
+    nvs_flash_init();
+
+    /* nimble_port_init() handles controller init internally — do NOT call
+       esp_bt_controller_init/enable explicitly */
+    nimble_port_init();
+    /* ... set ble_hs_cfg.sync_cb, nimble_port_freertos_init() ... */
 
     esp_timer_create_args_t timer_args = {
         .callback = adv_timer_cb,
@@ -181,7 +179,10 @@ CONFIG_BT_NIMBLE_ROLE_OBSERVER=n
 CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
 CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=n
 CONFIG_BT_NIMBLE_MAX_CONNECTIONS=0
+CONFIG_BT_NIMBLE_SECURITY_ENABLE=n
 ```
+
+The `CONFIG_BT_NIMBLE_SECURITY_ENABLE=n` line is mandatory — without it, broadcaster-only builds fail with `undefined reference to 'ble_sm_deinit'` (ESP-IDF 5.5.x bug). A non-connectable broadcaster has no use for the security manager.
 
 Disabling observer/central/peripheral roles reduces NimBLE RAM footprint by ~4–8 KB.
 
@@ -196,7 +197,10 @@ CONFIG_BT_NIMBLE_EXT_ADV=y
 
 | Issue | Root Cause | Fix |
 |---|---|---|
-| `assert` crash in `esp_bt_controller_disable()` | Called before NimBLE host task exits | Always call `nimble_port_stop()` and wait for it to return before disabling controller |
+| Double-init crash (`BLE_INIT: controller init failed`) | Explicit `esp_bt_controller_init/enable` before `nimble_port_init()` | Do NOT call them — `nimble_port_init()` handles controller init internally on ESP-IDF 5.5.x |
+| Double-deinit crash | Explicit `esp_bt_controller_disable/deinit` after `nimble_port_deinit()` | Do NOT call them — `nimble_port_deinit()` handles controller teardown internally on ESP-IDF 5.5.x |
+| `BLE_INIT: controller init failed` | Missing `nvs_flash_init()` before BLE init | Call `nvs_flash_init()` before `nimble_port_init()` — BLE stores PHY calibration in NVS |
+| Task WDT timeout during advertising window | `app_main` blocks on semaphore longer than 5 s WDT timeout | Call `esp_task_wdt_delete(NULL)` before `xSemaphoreTake`, `esp_task_wdt_add(NULL)` after |
 | Advertising never stops | Timer callback calls `ble_gap_adv_stop()` from wrong context | `esp_timer` callbacks are safe; FreeRTOS timer callbacks are also safe; ISR callbacks are not |
 | 31-byte PDU overflow | Payload + headers exceed limit | Count bytes: Flags (3) + Mfr header (4) + company ID (2) = 9 bytes consumed before payload |
 | GPIO state lost after wakeup | `gpio_hold_en()` not called before deep sleep | Call `gpio_hold_en(pin)` after BLE teardown, before `esp_deep_sleep_start()` |
