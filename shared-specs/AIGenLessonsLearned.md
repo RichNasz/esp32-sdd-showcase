@@ -36,6 +36,61 @@
   produces an "unknown kconfig symbol" warning that silently drops the safety setting.
   Use `CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y` in sdkconfig.defaults. (Mar 2026)
 
+- **ESP32-S3 does not support `esp_sleep_enable_ext0_wakeup()`**. ext0 is an ESP32-original-only API.
+  On ESP32-S3 (and ESP32-S2, ESP32-C3, ESP32-C6, ESP32-H2), use
+  `esp_sleep_enable_ext1_wakeup(1ULL << gpio_num, ESP_EXT1_WAKEUP_ANY_LOW)` for active-LOW
+  GPIO wakeup from a single pin. The wakeup cause is `ESP_SLEEP_WAKEUP_EXT1`, not `ESP_SLEEP_WAKEUP_EXT0`.
+  The compiler error is: `implicit declaration of function 'esp_sleep_enable_ext0_wakeup'`. (Mar 2026)
+
+- **NimBLE broadcaster-only builds require `CONFIG_BT_NIMBLE_SECURITY_ENABLE=n`** on ESP-IDF 5.5.x.
+  Root cause: `ble_hs.c` calls `ble_sm_deinit()` when `NIMBLE_BLE_SM=1`, but `ble_sm.c` only
+  defines `ble_sm_deinit()` when `BLE_STATIC_TO_DYNAMIC=1` (defaults to 0). This guard mismatch
+  causes `undefined reference to 'ble_sm_deinit'` at link time. The fix is to disable the security
+  manager entirely: `CONFIG_BT_NIMBLE_SECURITY_ENABLE=n`. This cascades to set `BLE_SM_LEGACY=0`
+  and `BLE_SM_SC=0`, making `NIMBLE_BLE_SM=0`, so `ble_hs.c` never calls `ble_sm_deinit()`.
+  A non-connectable broadcaster has zero use for the security manager.
+  Also note: `sdkconfig.defaults` is only applied when no `sdkconfig` file exists at the project
+  root. After any manual menuconfig session, delete `sdkconfig` before a clean build to ensure
+  `sdkconfig.defaults` takes effect. (Mar 2026)
+
+- **RTC GPIO ranges differ per ESP32 family — validate before assigning wakeup GPIOs.**
+  `ext0`/`ext1` deep-sleep wakeup requires RTC-capable GPIOs. Valid ranges confirmed from
+  ESP-IDF v5.5.3 `components/soc/<target>/include/soc/rtc_io_channel.h` and `esp_sleep.h` lines 314-318:
+  - ESP32 (original): GPIO 0, 2, 4, 12–15, 25–27, 32–39
+  - ESP32-S3: GPIO 0–21 (all RTC-capable)
+  - **ESP32-C6: GPIO 0–7 only** — boot button GPIO 9 is NOT an RTC GPIO
+  - **ESP32-C5: GPIO 0–6 only** — boot button GPIO 9 is NOT an RTC GPIO
+  When a target's only physical button is not RTC-capable, use timer-only wakeup. No external
+  hardware should be required as a workaround — document the limitation clearly instead.
+  Symptoms of misassignment: `esp_sleep_enable_ext1_wakeup()` returns `ESP_ERR_INVALID_ARG`
+  at runtime, or the device never wakes from deep sleep on button press. (Mar 2026)
+
+- **`nvs_flash_init()` is required before any BLE/WiFi API call.** The BLE controller stores PHY
+  calibration data in NVS. Without `nvs_flash_init()`, `esp_bt_controller_init()` fails with
+  `BLE_INIT: controller init failed`. On USB CDC boards (XIAO ESP32S3), the resulting crash loop
+  is invisible because the device resets too fast for USB to enumerate — the serial monitor shows
+  only `waiting for download` and the device appears stuck. Always include:
+  ```c
+  #include "nvs_flash.h"
+  // ...
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
+  ```
+  Also add `nvs_flash` to `REQUIRES` in `main/CMakeLists.txt`. (Mar 2026)
+
+- **`nimble_port_init()` handles BLE controller init — do NOT call `esp_bt_controller_init/enable` explicitly.**
+  In ESP-IDF 5.5.3, `nimble_port_init()` internally calls `esp_bt_controller_init()` and
+  `esp_bt_controller_enable()`. Calling them explicitly before `nimble_port_init()` causes a
+  double-init crash (`BLE_INIT: controller init failed`). Similarly, `nimble_port_deinit()`
+  internally calls `esp_bt_controller_disable()` and `esp_bt_controller_deinit()` — calling them
+  explicitly after `nimble_port_deinit()` causes a double-deinit crash. The correct NimBLE
+  lifecycle is: `nimble_port_init()` → use stack → `nimble_port_stop()` → `nimble_port_deinit()`.
+  No `#include "esp_bt.h"` is needed. (Mar 2026)
+
 ## Required Workflow When Something Goes Wrong
 1. Read this file.
 2. Check shared-specs/CodingStandards.md and the relevant board-spec.

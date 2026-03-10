@@ -56,9 +56,10 @@ MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before do
    - `idf_component.yml` if external component dependencies are required
    - `.gitignore` (must exclude `build/`, `sdkconfig`, `sdkconfig.old`, `*.bin`, `*.elf`, `*.map`)
 5. Invoke `esp32-deep-sleep-engineer` sub-workflow if deep sleep is specified in the FunctionalSpec.
-6. Invoke `esp32-hardware-crypto-configurer` sub-workflow if security requirements are present.
-7. Verify internal consistency: pin assignments match the board spec, component dependencies match CMakeLists, all FunctionalSpec features are accounted for.
-8. Generate `examples/<name>/README.md` with agent-generated header and all of the following sections in order:
+6. Invoke `esp32-ble-beacon-engineer` sub-workflow if BLE advertising, beaconing, or manufacturer data is specified in the FunctionalSpec.
+7. Invoke `esp32-hardware-crypto-configurer` sub-workflow if security requirements are present.
+8. Verify internal consistency: pin assignments match the board spec, component dependencies match CMakeLists, all FunctionalSpec features are accounted for.
+9. Generate `examples/<name>/README.md` with agent-generated header and all of the following sections in order:
    - **Overview** — one-paragraph summary of what the example demonstrates
    - **Prerequisites** — ESP-IDF version, target chip, required hardware
    - **Build & Flash** — `idf.py set-target`, `idf.py build flash monitor` commands
@@ -83,4 +84,4 @@ MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before do
    - **Testing** — generated from `specs/TestSpec.md` if present; omit section entirely if TestSpec.md is absent. Automated tests first, manual tests (labelled "Manual — hardware required") only for steps that cannot be automated. Numbered, beginner-friendly steps.
    - **Spec Files** — links to `specs/FunctionalSpec.md`, `specs/CodingSpec.md`, and `specs/TestSpec.md` (if present)
 
-9. Output: "Project generated. Build with `idf.py build` from `examples/<name>/`."
+10. Output: "Project generated. Build with `idf.py build` from `examples/<name>/`."
