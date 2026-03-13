@@ -20,7 +20,7 @@ menu "OTA Configuration"
 
     config OTA_SERVER_URL
         string "OTA Server URL"
-        default "https://192.168.1.100:8070/firmware.bin"
+        default "https://raw.githubusercontent.com/RichNasz/esp32-sdd-showcase/main/examples/secure-ota-https/secure_ota_https.bin"
         help
             Full HTTPS URL of the firmware binary to download.
             Must use HTTPS. The server certificate must match main/server_cert.pem.

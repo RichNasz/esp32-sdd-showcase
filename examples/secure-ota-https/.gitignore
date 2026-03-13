@@ -8,6 +8,7 @@ build/
 sdkconfig
 sdkconfig.old
 *.bin
+!secure_ota_https.bin
 *.elf
 *.map
 dependencies.lock
