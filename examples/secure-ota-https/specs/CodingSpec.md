@@ -60,7 +60,7 @@ deep-sleep-bme280-mqtt-sensor example. No reconnect or roaming logic is needed.
   on the esp_https_ota call for the full transfer duration.
 - All state transitions must be logged via ESP_LOGx: Wi-Fi connect/fail, OTA start/progress
   percentage/success/fail, and rollback-check result. This is mandatory for field diagnostics
-  over the CH343P serial bridge.
+  over the native USB serial console.
 
 ## Gotchas
 
@@ -71,8 +71,11 @@ deep-sleep-bme280-mqtt-sensor example. No reconnect or roaming logic is needed.
   certificate. For a self-signed server, embed the server's own certificate — not a root CA.
 - Custom partition tables require CONFIG_PARTITION_TABLE_CUSTOM=y and
   CONFIG_PARTITION_TABLE_CUSTOM_FILENAME pointing to the CSV in sdkconfig.defaults.
-- The YEJMKJ board uses a CH343P USB-to-UART bridge chip — standard UART console applies.
-  Do NOT set CONFIG_ESP_CONSOLE_USB_CDC=y; this board has no native USB-CDC path.
+- The YEJMKJ board uses native USB only (no CH343P bridge). Its single USB-C connector
+  exposes two logical interfaces: a JTAG/DFU interface for flashing and a USB Serial/JTAG
+  CDC interface for console output. Flash via the usbmodem JTAG port, monitor via the
+  usbmodem CDC port. Set CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y in sdkconfig.defaults.
+  Do NOT set CONFIG_ESP_CONSOLE_USB_CDC=y.
 
 ## File Layout (non-standard files)
 

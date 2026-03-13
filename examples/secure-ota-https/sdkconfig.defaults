@@ -27,5 +27,6 @@ CONFIG_ESP_TASK_WDT_EN=y
 # Logging
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 
-# Serial console — CH343P USB-to-UART bridge; standard UART applies, no USB-CDC required
-# (Do NOT set CONFIG_ESP_CONSOLE_USB_CDC for this board)
+# Serial console — native USB OTG only (no CH343P bridge on this board)
+# Flash: /dev/cu.usbmodem*2101 (JTAG/DFU) | Monitor: /dev/cu.usbmodem*5A7B* (USB Serial/JTAG CDC)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

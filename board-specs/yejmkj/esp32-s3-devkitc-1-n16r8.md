@@ -24,8 +24,7 @@
 | Item | Detail |
 | --- | --- |
 | 3V3 rail | ~600 mA max from onboard LDO (5 V input via either USB-C) |
-| USB-C #1 input | ESP32-S3 native USB OTG port — 5 V, power + data + OTG |
-| USB-C #2 input | USB-to-Serial port — 5 V, programming/debug only |
+| USB-C input | ESP32-S3 native USB OTG — 5 V, power + data; exposes JTAG/DFU + CDC/console |
 | Battery input | None |
 | Deep sleep current | ~7 µA typical (RTC timer only, all peripherals off) |
 | Active current | ~80–240 mA during Wi-Fi transmission |
@@ -61,16 +60,18 @@ Touch sensor channels (TOUCH1–TOUCH14) overlap with GPIO1–GPIO14 and share t
 
 ### USB Serial / Console
 
-The board has **two USB-C ports**:
+The board has **one USB-C port** connected directly to the ESP32-S3 native USB OTG peripheral (GPIO19 USB\_D−, GPIO20 USB\_D+). There is **no CH343P** or any other USB-to-UART bridge chip on this board. Over the single USB-C connector the ESP32-S3 exposes two logical USB interfaces simultaneously:
 
-- **USB-to-Serial port** (same side as RST + BOOT buttons): connected to a **CH343P** USB-to-UART bridge chip. This is the primary port for `idf.py flash monitor`, programming, and serial console. No special `sdkconfig.defaults` entry is required — the default UART console works automatically. On macOS/Linux the port enumerates as `/dev/tty.usbserial-*` or `/dev/ttyUSB0`; on Windows, CH343P drivers may need manual installation from the WCH website. **Use a data-capable USB-C cable** — charge-only cables have no data lines and will prevent the board from being detected entirely.
-- **ESP32-S3 USB port**: connected directly to GPIO19 (USB\_D−) and GPIO20 (USB\_D+). Provides native USB OTG capabilities. To use this port as the serial console instead, add the following to `sdkconfig.defaults`:
+- **USB JTAG/DFU interface** — used for flashing. Enumerates as `/dev/cu.usbmodem*2101` (macOS) or `/dev/ttyACM0` (Linux). Pass this port to `idf.py -p <port> flash`.
+- **USB Serial/JTAG CDC interface** — used for serial console output. Enumerates as a second `/dev/cu.usbmodem*` device (macOS) or `/dev/ttyACM1` (Linux). Pass this port to `idf.py -p <port> monitor`.
+
+Add the following to `sdkconfig.defaults` for all SDD projects targeting this board:
 
 ```ini
-CONFIG_ESP_CONSOLE_USB_CDC=y
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 ```
 
-For most SDD projects, use the USB-to-Serial port and leave the console at its default UART setting.
+**Use a data-capable USB-C cable** — charge-only cables have no data lines and will prevent the board from being detected entirely.
 
 ### Reserved / Internal Pins (do not use in user code)
 
@@ -149,7 +150,7 @@ For most SDD projects, use the USB-to-Serial port and leave the console at its d
 - Deep sleep floor of ~7 µA makes long battery life achievable; all GPIO0–21 are RTC-capable on ESP32-S3, giving flexible wakeup options.
 - 8 MB OPI PSRAM enables large ML inference buffers, JPEG frame capture, audio DSP pipelines, and LittleFS/FATFS overlays without flash wear.
 - 16 MB flash provides ample space for OTA partitions, large file systems, and complex multi-component applications.
-- Dual USB-C design: the USB-to-Serial port handles programming/debugging while the native USB OTG port is simultaneously available for HID, CDC-ACM, or MIDI device emulation.
+- Single USB-C port uses the ESP32-S3 native USB OTG peripheral directly — no CH343P bridge. It simultaneously exposes a JTAG/DFU interface for flashing and a USB Serial/JTAG CDC interface for console, with no extra drivers required on modern macOS/Linux.
 - Onboard WS2812 RGB LED (GPIO48) is useful for status indication in any example without additional hardware. Note: solder jumper on the board may need bridging before the LED functions.
 - 4 dedicated JTAG pins (GPIO39–42) allow hardware-assisted debugging via `idf.py openocd` without occupying user-accessible GPIOs.
 - ADC1 (10 channels, GPIO1–10) is always available, even when Wi-Fi/BLE is active — safe for sensor applications that coexist with wireless.
@@ -157,14 +158,18 @@ For most SDD projects, use the USB-to-Serial port and leave the console at its d
 
 ## Flashing Procedure
 
-Connect via the **USB-to-Serial USB-C port** (same side as RST + BOOT buttons), then enter bootloader mode manually:
+Connect via the single **USB-C port**. The board presents two `usbmodem` interfaces — identify both before flashing:
 
-1. Press and hold **BOOT** (GPIO0).
-2. While holding BOOT, press and release **RST**.
-3. Release **BOOT**. The board is now in serial download mode.
-4. Run `idf.py flash monitor` (or initiate upload from your IDE).
+- Flash port: `/dev/cu.usbmodem*2101` (USB JTAG/DFU)
+- Monitor port: `/dev/cu.usbmodem*5A7B*` (USB Serial/JTAG CDC)
 
-`idf.py flash` on modern ESP-IDF with the CH343P driver will typically trigger this sequence automatically via DTR/RTS — the manual sequence is a fallback if auto-reset fails.
+Run flash and monitor together:
+
+```sh
+idf.py -p /dev/cu.usbmodem2101 flash -p /dev/cu.usbmodem5A7B1597911 monitor
+```
+
+If the board does not enumerate, enter bootloader mode manually: hold **BOOT** (GPIO0), press and release **RST**, then release **BOOT**. Native USB JTAG does not use DTR/RTS auto-reset — the manual sequence may be needed on first flash.
 
 ## idf.py Target
 
@@ -172,4 +177,4 @@ Connect via the **USB-to-Serial USB-C port** (same side as RST + BOOT buttons), 
 idf.py set-target esp32s3
 ```
 
-> Use the **USB-to-Serial USB-C port** (same side as RST + BOOT buttons) for `idf.py flash monitor`. The native USB OTG port does not expose a UART by default. If you switch to native USB CDC console, add `CONFIG_ESP_CONSOLE_USB_CDC=y` to `sdkconfig.defaults` and flash via the ESP32-S3 USB-C port instead.
+> This board has **one USB-C port** (native USB OTG, no CH343P). It enumerates as two `usbmodem` devices: a JTAG/DFU interface for flashing and a USB Serial/JTAG CDC interface for console. Always set `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` in `sdkconfig.defaults`. Pass each port explicitly: `idf.py -p <jtag-port> flash -p <cdc-port> monitor`. Do NOT set `CONFIG_ESP_CONSOLE_USB_CDC=y`.
