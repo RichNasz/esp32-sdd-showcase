@@ -1,7 +1,7 @@
 # ==================== BOARD SELECTION ====================
 # Change only this section, then regenerate the project
 #
-# Board: seeed-xiao-esp32s3          ← ACTIVE / DEFAULT
+# Board: YEJMKJ ESP32-S3-DevKitC-1-N16R8          ← ACTIVE / DEFAULT
 #
 # =======================================================
 # Institutional Memory: shared-specs/AIGenLessonsLearned.md — read before regenerating
@@ -40,6 +40,15 @@ esp_ota_write would duplicate logic that esp_https_ota already handles correctly
 Use standard STA Wi-Fi with event loop for network connectivity — the same pattern as the
 deep-sleep-bme280-mqtt-sensor example. No reconnect or roaming logic is needed.
 
+## Hardware Interface
+
+| Signal         | GPIO | Direction | Notes                                      |
+|----------------|------|-----------|--------------------------------------------|
+| LED Left       | 4    | Output    | Active-high, 3.3 V drive; steady ON = ota_0 active |
+| LED Middle     | 5    | Output    | Active-high; blinks during OTA, error pattern on failure |
+| LED Right      | 6    | Output    | Active-high; steady ON = ota_1 active      |
+| Button Trigger | 7    | Input     | Active-low; ESP32-S3 internal pull-up enabled |
+
 ## Non-Functional Requirements
 
 - OTA API failures must not trigger abort(). Log the error with esp_err_to_name, blink the
@@ -49,6 +58,9 @@ deep-sleep-bme280-mqtt-sensor example. No reconnect or roaming logic is needed.
   The operator must be able to observe the failure cause from the serial log.
 - The LED blink during download must run on a separate FreeRTOS task, because app_main blocks
   on the esp_https_ota call for the full transfer duration.
+- All state transitions must be logged via ESP_LOGx: Wi-Fi connect/fail, OTA start/progress
+  percentage/success/fail, and rollback-check result. This is mandatory for field diagnostics
+  over the CH343P serial bridge.
 
 ## Gotchas
 
@@ -59,8 +71,8 @@ deep-sleep-bme280-mqtt-sensor example. No reconnect or roaming logic is needed.
   certificate. For a self-signed server, embed the server's own certificate — not a root CA.
 - Custom partition tables require CONFIG_PARTITION_TABLE_CUSTOM=y and
   CONFIG_PARTITION_TABLE_CUSTOM_FILENAME pointing to the CSV in sdkconfig.defaults.
-- USB-CDC requires CONFIG_ESP_CONSOLE_USB_CDC=y and a brief startup delay before the first
-  log line, specific to the XIAO's native USB implementation.
+- The YEJMKJ board uses a CH343P USB-to-UART bridge chip — standard UART console applies.
+  Do NOT set CONFIG_ESP_CONSOLE_USB_CDC=y; this board has no native USB-CDC path.
 
 ## File Layout (non-standard files)
 

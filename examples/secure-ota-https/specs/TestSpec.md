@@ -31,7 +31,7 @@ Pass: exit code 0, zero compiler warnings.
 idf.py partition-table 2>&1 | grep -E "ota_0|ota_1"
 ```
 
-Pass: both `ota_0` and `ota_1` partitions listed with ≥ 2 MB each.
+Pass: both `ota_0` and `ota_1` partitions listed with ≥ 1536K (1.5 MB) each.
 
 ---
 

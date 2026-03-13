@@ -1,53 +1,66 @@
-# Secure OTA via HTTPS — Signed Production Updates
+# Secure OTA via HTTPS — Button-Triggered Partition Flip Demo
 
 ## Overview
 
-Production OTA example. Connects to Wi-Fi, fetches a firmware binary from an HTTPS
-server, verifies the server certificate, writes the new image to the OTA partition,
-and reboots into it. On next boot, the firmware marks itself valid to complete the
-update; failure to mark valid within a configurable window triggers automatic rollback
-to the previous image. Demonstrates the full signed-OTA lifecycle required for any
-production ESP32 deployment.
+Minimal visual demonstration of ESP32-S3 OTA using dual partitions.
+
+The device maintains two firmware images in flash:
+- "Program 1" — lights left LED only
+- "Program 2" — lights right LED only
+
+Both images are functionally identical except for which status LED they illuminate.
+
+Pressing the button triggers an HTTPS OTA download from a fixed server URL.  
+The new binary is written to the **inactive** OTA partition.  
+On success the device reboots → runs the newly written image → lights the opposite status LED.  
+This creates a clear visual flip between left and right LEDs each time the button is pressed.
+
+A middle LED indicates OTA activity (blinking during transfer) and errors (distinct pattern on failure).
 
 ## Supported Boards
 
-- Seeed XIAO ESP32S3 (default)
+- YEJMKJ ESP32-S3-DevKitC-1-N16R8 (default )
 
 ## Requirements
 
-- Connect to Wi-Fi (credentials via Kconfig).
-- Fetch firmware binary via HTTPS using `esp_https_ota` component.
-- Validate server TLS certificate against a bundled CA certificate (PEM, embedded via `target_add_binary_data` in CMakeLists).
-- Write binary to inactive OTA partition using `esp_ota_*` API.
-- Verify image integrity: check `esp_image_verify()` on the written partition before rebooting.
-- Reboot into new firmware with `esp_restart()`.
-- On first boot after OTA: call `esp_ota_mark_app_valid_cancel_rollback()` to confirm the update.
-- If the new firmware fails to mark itself valid within `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` timeout, bootloader rolls back to the previous partition.
-- Log all stages (connecting, downloading, writing, verifying, rebooting) over serial with progress percentage.
-- Blink LED (GPIO 21) slowly during download; fast-blink 3× on OTA error.
-- OTA server URL: configurable via `CONFIG_OTA_SERVER_URL` (Kconfig).
+- Connect to Wi-Fi (credentials via Kconfig)
+- Fetch firmware binary via HTTPS using `esp_https_ota`
+- Validate server TLS certificate against bundled CA (PEM embedded at build time)
+- Write to inactive OTA partition
+- Reboot on success
+- On first boot after OTA: call `esp_ota_mark_app_valid_cancel_rollback()` early
+- Rollback occurs automatically if new image does not mark itself valid
+- Three external status LEDs + one button
+- Log progress and state changes over serial
+- Blink middle LED during OTA; show error pattern on failure
 
 ## Hardware Dependencies
 
-- Board-spec: board-specs/seeed/xiao-esp32s3.md (ESP32-S3, LED GPIO 21 active LOW)
-- No external components required (Wi-Fi built-in).
+- Board: ESP32-S3-DevKitC-1-N16R8
+- External components:
+  - 3× LEDs (active high) + current-limiting resistors (~220–330 Ω)
+  - 1× push button (connects GPIO to GND when pressed)
 
-## Partition Table
+## LED & Button Pin Assignments
 
-- Requires a custom partition table with two OTA app partitions:
-  `factory` (or `ota_0`) and `ota_1`, each ≥ 2 MB.
-- `partitions.csv` must be included in the project.
+| Visual Position | Function                          | GPIO | Header approx. location | Notes                     |
+|-----------------|-----------------------------------|------|--------------------------|---------------------------|
+| Left            | Program 1 active (ota_0)          | 4    | J1 (left header)         | Steady ON when active     |
+| Middle          | OTA / Transition / Error          | 5    | J1                       | Blinks during OTA         |
+| Right           | Program 2 active (ota_1)          | 6    | J1                       | Steady ON when active     |
+| Button          | Trigger OTA (press → GND)         | 7    | J1                       | Internal pull-up          |
 
 ## Connectivity
 
-- Wi-Fi STA mode, WPA2-Personal.
-- HTTPS only — no plaintext HTTP fallback.
-- Server CA certificate embedded at build time (PEM file).
+- Wi-Fi STA mode, WPA2-Personal
+- HTTPS only
+- Server CA certificate embedded at build time
 
 ## Success Criteria
 
-- Firmware downloads and installs without error.
-- Server cert is verified; connection to a server with an invalid cert is rejected.
-- After OTA reboot, new firmware boots and marks itself valid.
-- Rollback test: new firmware that does not call `mark_app_valid` triggers rollback to previous image on next boot.
-- No data corruption in OTA partition across 3 consecutive OTA cycles.
+- Button press → middle LED blinks → device reboots → opposite status LED lights up
+- Server certificate verified; invalid cert prevents download
+- After successful OTA, new image marks itself valid → no rollback
+- Rollback test: image without `mark_app_valid` call reverts on next boot
+- No corruption after multiple flips
+- Clear visual indication of which program is running at all times

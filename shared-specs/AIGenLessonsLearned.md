@@ -91,6 +91,19 @@
   lifecycle is: `nimble_port_init()` → use stack → `nimble_port_stop()` → `nimble_port_deinit()`.
   No `#include "esp_bt.h"` is needed. (Mar 2026)
 
+- **ESP-IDF 5.5.x component name corrections for main/CMakeLists.txt REQUIRES:**
+  - OTA operations (`esp_ota_get_running_partition`, `esp_ota_mark_app_valid_cancel_rollback`,
+    `esp_ota_get_state_partition`) → component is **`app_update`**, NOT `esp_ota_ops`.
+    `esp_ota_ops` does not exist as a standalone component; the header `esp_ota_ops.h` is
+    provided by `app_update`. Using `esp_ota_ops` in REQUIRES causes cmake to fail with
+    "component could not be found".
+  - Task watchdog (`esp_task_wdt.h`) → header lives in **`esp_system`** component, not a
+    standalone `esp_task_wdt` component. If you only need the WDT for implicit idle-task
+    monitoring (sdkconfig CONFIG_ESP_TASK_WDT_EN=y), no explicit REQUIRES entry is needed —
+    esp_system is already a transitive dependency. Only add `esp_system` to REQUIRES if you
+    call `esp_task_wdt_add/reset/delete` directly.
+  (Mar 2026)
+
 ## Required Workflow When Something Goes Wrong
 1. Read this file.
 2. Check shared-specs/CodingStandards.md and the relevant board-spec.

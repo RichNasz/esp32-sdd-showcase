@@ -1,0 +1,35 @@
+# ================================================
+# AGENT-GENERATED — DO NOT EDIT BY HAND
+# Generated from specs/ using esp32-sdd-full-project-generator skill
+# Date: 2026-03-11 | Agent: Claude Code
+# ================================================
+
+menu "OTA Configuration"
+
+    config OTA_WIFI_SSID
+        string "Wi-Fi SSID"
+        default "myssid"
+        help
+            SSID of the Wi-Fi network used to reach the OTA server.
+
+    config OTA_WIFI_PASSWORD
+        string "Wi-Fi Password"
+        default "mypassword"
+        help
+            WPA2 password for the Wi-Fi network. Leave empty for open networks.
+
+    config OTA_SERVER_URL
+        string "OTA Server URL"
+        default "https://192.168.1.100:8070/firmware.bin"
+        help
+            Full HTTPS URL of the firmware binary to download.
+            Must use HTTPS. The server certificate must match main/server_cert.pem.
+
+    config OTA_LED_BLINK_TASK_STACK_SIZE
+        int "OTA LED blink task stack size (bytes)"
+        default 2048
+        range 1024 8192
+        help
+            FreeRTOS stack size for the OTA progress LED blink task.
+
+endmenu

@@ -1,0 +1,31 @@
+# ================================================
+# AGENT-GENERATED — DO NOT EDIT BY HAND
+# Generated from specs/ using esp32-sdd-full-project-generator skill
+# Date: 2026-03-11 | Agent: Claude Code
+# Board: YEJMKJ ESP32-S3-DevKitC-1-N16R8
+# ================================================
+
+# Target
+CONFIG_IDF_TARGET="esp32s3"
+
+# Flash — 16 MB Quad SPI NOR (ESP32-S3-WROOM-1-N16R8)
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# Partition table — dual OTA layout (partitions.csv)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_OFFSET=0x8000
+
+# OTA rollback — new image must call esp_ota_mark_app_valid_cancel_rollback() on startup
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# Safety
+# Note: symbol is FREERTOS_CHECK_STACKOVERFLOW_CANARY (not ESP_SYSTEM_*) — see AIGenLessonsLearned.md
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+CONFIG_ESP_TASK_WDT_EN=y
+
+# Logging
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# Serial console — CH343P USB-to-UART bridge; standard UART applies, no USB-CDC required
+# (Do NOT set CONFIG_ESP_CONSOLE_USB_CDC for this board)

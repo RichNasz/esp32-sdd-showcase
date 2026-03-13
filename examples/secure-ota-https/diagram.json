@@ -1,0 +1,84 @@
+{
+  "_comment": "AGENT-GENERATED — DO NOT EDIT BY HAND. Generated using esp32-sdd-full-project-generator skill. Date: 2026-03-11 | Agent: Claude Code",
+  "version": 1,
+  "author": "Claude Code",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32s3-devkitc-1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": -80,
+      "left": -180,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -100,
+      "left": -240,
+      "attrs": { "color": "red" },
+      "rotate": 0
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": -20,
+      "left": -180,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led2",
+      "top": -40,
+      "left": -240,
+      "attrs": { "color": "yellow" },
+      "rotate": 0
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r3",
+      "top": 40,
+      "left": -180,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led3",
+      "top": 20,
+      "left": -240,
+      "attrs": { "color": "green" },
+      "rotate": 0
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn",
+      "top": 120,
+      "left": -200,
+      "attrs": { "color": "blue" },
+      "rotate": 0
+    }
+  ],
+  "connections": [
+    [ "esp:IO4",   "r1:1",    "green",  [] ],
+    [ "r1:2",      "led1:A",  "green",  [] ],
+    [ "led1:C",    "esp:GND.1", "black", [] ],
+    [ "esp:IO5",   "r2:1",    "green",  [] ],
+    [ "r2:2",      "led2:A",  "green",  [] ],
+    [ "led2:C",    "esp:GND.2", "black", [] ],
+    [ "esp:IO6",   "r3:1",    "green",  [] ],
+    [ "r3:2",      "led3:A",  "green",  [] ],
+    [ "led3:C",    "esp:GND.3", "black", [] ],
+    [ "esp:IO7",   "btn:1.l", "green",  [] ],
+    [ "btn:2.l",   "esp:GND.4", "black", [] ]
+  ]
+}
