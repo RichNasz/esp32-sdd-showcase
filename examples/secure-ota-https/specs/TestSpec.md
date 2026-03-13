@@ -63,24 +63,33 @@ Pass: `server_cert.pem` appears in build output (confirms `target_add_binary_dat
 
 *End-to-end OTA requires a real HTTPS server, Wi-Fi AP, and target hardware. These tests cannot be reliably automated without a complex multi-process CI rig.*
 
-### T-M1 — Full OTA Download and Flash
+### T-M1 — Full OTA Download and Flash (default GitHub server)
 
-**Why manual**: Requires a live HTTPS server with a self-signed certificate and a real Wi-Fi network.
+**Why manual**: Requires a live Wi-Fi network and real target hardware.
+
+The default configuration uses GitHub raw content as the OTA server
+(`CONFIG_OTA_SERVER_URL` default) and ISRG Root X1 as the embedded CA
+(`main/server_cert.pem`). No local server setup is needed for this path.
 
 Prerequisites:
-- `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"`
-- `python3 -m http.server 8070 --bind 0.0.0.0` (or a simple HTTPS server)
-- Place a valid `firmware.bin` at the server root.
+- A built firmware binary pushed to the repository at the URL in `CONFIG_OTA_SERVER_URL`.
+- Wi-Fi credentials configured via Kconfig (`idf.py menuconfig → OTA Configuration`).
 
 Steps:
-1. Copy `cert.pem` to `main/server_cert.pem` in the example.
-2. Set `CONFIG_OTA_SERVER_URL`, `CONFIG_WIFI_SSID`, `CONFIG_WIFI_PASSWORD` in sdkconfig.
-3. Build and flash: `idf.py build flash`
-4. Open monitor: `idf.py monitor`
-5. Confirm progress log: connecting → fetching → writing → rebooting.
-6. Confirm device reboots into new firmware and logs "Marked valid".
+1. Set `OTA_WIFI_SSID` and `OTA_WIFI_PASSWORD` via `idf.py menuconfig`.
+2. Build and flash: `idf.py -p /dev/cu.usbmodem2101 flash monitor`
+3. Confirm serial log: Wi-Fi connected → "Ready — press button to trigger OTA".
+4. Press the button (GPIO 7).
+5. Confirm progress log: downloading → writing → rebooting.
+6. Confirm device reboots into new firmware; opposite status LED lights up; log shows "app marked valid".
 
 Pass: OTA completes; device boots new firmware; rollback not triggered.
+
+**Alternative: Local self-signed server**
+
+For testing cert rejection or non-GitHub servers:
+- `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"`
+- Serve the binary over HTTPS; place `cert.pem` in `main/server_cert.pem`; rebuild.
 
 ---
 

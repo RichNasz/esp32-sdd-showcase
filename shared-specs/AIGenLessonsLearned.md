@@ -106,13 +106,12 @@
 
 - **YEJMKJ ESP32-S3-DevKitC-1-N16R8 uses native USB only — no CH343P bridge.**
   The board has a single USB-C port connected directly to the ESP32-S3 native USB OTG
-  peripheral (GPIO19/GPIO20). It enumerates as two logical interfaces over that single connector:
-  a JTAG/DFU interface (`/dev/cu.usbmodem*2101` on macOS) for flashing and a USB Serial/JTAG
-  CDC interface (`/dev/cu.usbmodem*5A7B*` on macOS) for console output. Always set
-  `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` in `sdkconfig.defaults`. Flash and monitor together:
-  `idf.py -p /dev/cu.usbmodem2101 flash -p /dev/cu.usbmodem5A7B1597911 monitor`.
+  peripheral (GPIO19/GPIO20). It enumerates as a single port (`/dev/cu.usbmodem2101` on macOS)
+  for both flashing and console output. Always set `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` in
+  `sdkconfig.defaults`. Flash and monitor together on the same port:
+  `idf.py -p /dev/cu.usbmodem2101 flash monitor`.
   Do NOT set `CONFIG_ESP_CONSOLE_USB_CDC=y` and do NOT reference `usbserial-*` ports — there is
-  no UART bridge on this board. (Mar 2026)
+  no UART bridge on this board. (Mar 2026, corrected Mar 2026)
 
 ## Required Workflow When Something Goes Wrong
 1. Read this file.

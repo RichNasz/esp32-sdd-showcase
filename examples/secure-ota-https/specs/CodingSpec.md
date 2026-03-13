@@ -67,15 +67,17 @@ deep-sleep-bme280-mqtt-sensor example. No reconnect or roaming logic is needed.
 - If rollback is enabled but esp_ota_mark_app_valid_cancel_rollback() is never called, the
   device will roll back on every subsequent reboot even after a successful OTA. This call must
   be unconditional and must happen before any user logic.
-- The PEM file embedded in the binary must match the CA that signed the OTA server's TLS
-  certificate. For a self-signed server, embed the server's own certificate — not a root CA.
+- The PEM file embedded in the binary must be a CA certificate that can validate the OTA
+  server's TLS chain. The default OTA URL (GitHub raw content) uses Let's Encrypt, which
+  chains to ISRG Root X1 — embed that root CA (see main/server_cert.pem). For a
+  self-signed test server, embed the server's own certificate directly instead.
 - Custom partition tables require CONFIG_PARTITION_TABLE_CUSTOM=y and
   CONFIG_PARTITION_TABLE_CUSTOM_FILENAME pointing to the CSV in sdkconfig.defaults.
 - The YEJMKJ board uses native USB only (no CH343P bridge). Its single USB-C connector
-  exposes two logical interfaces: a JTAG/DFU interface for flashing and a USB Serial/JTAG
-  CDC interface for console output. Flash via the usbmodem JTAG port, monitor via the
-  usbmodem CDC port. Set CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y in sdkconfig.defaults.
-  Do NOT set CONFIG_ESP_CONSOLE_USB_CDC=y.
+  enumerates as a single port (`/dev/cu.usbmodem2101`). Both flash and monitor use the
+  same port: `idf.py -p /dev/cu.usbmodem2101 flash monitor`. Set
+  CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y in sdkconfig.defaults. Do NOT set
+  CONFIG_ESP_CONSOLE_USB_CDC=y.
 
 ## File Layout (non-standard files)
 

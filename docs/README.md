@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-03-09 | Agent: Claude Code
+     Date: 2026-03-13 | Agent: Claude Code
      ================================================ -->
 
 # ESP32 SDD Showcase — Full Documentation
@@ -30,7 +30,7 @@ The ESP32 SDD Showcase is a reference implementation of **Spec-Driven Developmen
 | 3 | [deep-sleep-bme280-mqtt-sensor](../examples/deep-sleep-bme280-mqtt-sensor/) | IoT sensor node: BME280 + Wi-Fi + MQTT |
 | 4 | [hardware-aes-secure-storage](../examples/hardware-aes-secure-storage/) | AES-256 hardware accelerator |
 | 5 | [ble-beacon-deep-sleep](../examples/ble-beacon-deep-sleep/) | BLE beacon + multi-year battery life |
-| 6 | [secure-ota-https](../examples/secure-ota-https/) | HTTPS OTA + RSA signature verification |
+| 6 | [secure-ota-https](../examples/secure-ota-https/) | HTTPS OTA + TLS CA certificate validation + bootloader rollback |
 | 7 | [esp-now-low-power-mesh](../examples/esp-now-low-power-mesh/) | ESP-NOW Wi-Fi-free mesh |
 | 8 | [capacitive-touch-wakeup](../examples/capacitive-touch-wakeup/) | Capacitive touch wakeup |
 

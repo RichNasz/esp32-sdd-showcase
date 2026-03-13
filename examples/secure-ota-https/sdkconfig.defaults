@@ -28,5 +28,5 @@ CONFIG_ESP_TASK_WDT_EN=y
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 
 # Serial console — native USB OTG only (no CH343P bridge on this board)
-# Flash: /dev/cu.usbmodem*2101 (JTAG/DFU) | Monitor: /dev/cu.usbmodem*5A7B* (USB Serial/JTAG CDC)
+# Single port for both flash and monitor: idf.py -p /dev/cu.usbmodem2101 flash monitor
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
