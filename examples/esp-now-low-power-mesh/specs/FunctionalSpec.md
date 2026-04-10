@@ -25,37 +25,22 @@ This example demonstrates:
 
 ## Supported Boards
 
-The example is written for the Seeed XIAO ESP32S3 by default. All boards in the
-current `board-specs/` catalog that carry a WiFi-capable SoC are compatible. The table
-below lists each board, the per-board adaptations required in `sdkconfig.defaults`, and
-any notes affecting the LED blink logic.
+> Default board: Seeed XIAO ESP32S3 (`seeed/xiao-esp32s3.md`, target `esp32s3`)
 
-| Board | board-spec file | idf.py target | LED GPIO | LED polarity | LED type | USB console sdkconfig entry |
-| --- | --- | --- | --- | --- | --- | --- |
-| Seeed XIAO ESP32S3 *(default)* | `seeed/xiao-esp32s3.md` | `esp32s3` | GPIO 21 | Active LOW | Simple GPIO | `CONFIG_ESP_CONSOLE_USB_CDC=y` |
-| YEJMKJ ESP32-S3-DevKitC-1-N16R8 | `yejmkj/esp32-s3-devkitc-1-n16r8.md` | `esp32s3` | GPIO 48 | — | WS2812 RGB ¹ | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
-| Adafruit HUZZAH32 | `adafruit/huzzah32.md` | `esp32` | GPIO 13 | Active HIGH | Simple GPIO | None (CP2104 UART bridge) |
-| Espressif ESP32-C6-DevKitC-1-N8 | `espressif/esp32-c6-devkitc-1-n8.md` | `esp32c6` | GPIO 8 | — | WS2812 RGB ¹ | None (UART bridge on left USB-C port) |
-| Seeed XIAO ESP32-C6 | `seeed/xiao-esp32c6.md` | `esp32c6` | GPIO 15 | Active LOW | Simple GPIO | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
-| Seeed XIAO ESP32-C5 | `seeed/xiao-esp32c5.md` | `esp32c5` | GPIO 27 | Active LOW | Simple GPIO | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
-
-¹ **WS2812 boards**: GPIO 48 (YEJMKJ) and GPIO 8 (ESP32-C6-DevKitC) drive an addressable
-RGB LED that requires an RMT or SPI-based driver — `gpio_set_level()` alone will not
-produce visible output. When adapting the example for these boards, replace the simple
-GPIO blink with a single-pixel WS2812 write (green for success, red for failure, off for
-sleep). All other compatibility requirements are identical.
-
-> **All boards in this table support the SENSOR_RELAY role.** Light sleep + ESP-NOW receive
-> is available on every WiFi-capable ESP32 SoC supported by ESP-IDF 5.x.
-
-> **Excluded SoCs**: The ESP32-H2 has no WiFi radio and therefore cannot run ESP-NOW.
-> Any board built on the H2 is incompatible with this example regardless of other
-> capabilities.
+The Supported Boards table and Per-Board Behavior table in the generated README are
+**auto-discovered** by scanning `board-specs/` at documentation-generation time and
+applying the Board Compatibility Checklist below. Do not maintain a hardcoded board
+table here — add new boards via `esp32-board-spec-generator` and re-run
+`esp32-sdd-documentation-generator`.
 
 ## Board Compatibility Checklist
 
-Use this checklist when evaluating a new board added to `board-specs/` in the future.
-A board is compatible with this example if and only if it passes all required checks.
+Use this checklist to evaluate any board in `board-specs/`. The documentation generator
+applies these checks automatically; they are also useful for manual review when a new
+board is added. A board is compatible with this example if and only if it passes all
+required checks. All WiFi-capable boards in this catalog also support the SENSOR_RELAY
+role — light sleep + ESP-NOW receive is available on every WiFi-capable ESP32 SoC
+supported by ESP-IDF 5.x.
 
 ### Required checks (any failure = incompatible)
 
@@ -89,32 +74,6 @@ A board is compatible with this example if and only if it passes all required ch
 - [ ] **ADC channel availability**: not required by this example (RSSI is obtained via
   the WiFi scan API, not ADC). No action needed, but note for future features.
 
-## Per-Board Behavior
-
-How the example behaves differently depending on which board is used. Values are drawn
-from the board-specs listed above.
-
-| Board | Serial monitor during deep sleep | LED feedback | WiFi scan coverage | Deep sleep floor |
-| --- | --- | --- | --- | --- |
-| Seeed XIAO ESP32S3 *(default)* | Drops and reconnects on wake (native USB CDC) | On / off, active LOW | 2.4 GHz only | ~14 µA |
-| YEJMKJ ESP32-S3-DevKitC-1-N16R8 | Drops and reconnects on wake (native USB Serial/JTAG) | Color: green = success, red = failure, off = sleep (WS2812) | 2.4 GHz only | ~7 µA |
-| Adafruit HUZZAH32 | Stays connected throughout sleep (CP2104 UART bridge) | On / off, active HIGH | 2.4 GHz only | See board-spec |
-| Espressif ESP32-C6-DevKitC-1-N8 | Stays connected via left USB-C UART bridge | Color: green = success, red = failure, off = sleep (WS2812) | 2.4 GHz (WiFi 6 ax) | ~7–15 µA |
-| Seeed XIAO ESP32-C6 | Drops and reconnects on wake (native USB Serial/JTAG) | On / off, active LOW | 2.4 GHz (WiFi 6 ax) | ~15 µA |
-| Seeed XIAO ESP32-C5 | Drops and reconnects on wake (native USB Serial/JTAG) | On / off, active LOW | **2.4 GHz + 5 GHz** (dual-band WiFi 6) | ~8 µA |
-
-**Most consequential difference for first-time users**: boards with native USB (all XIAO
-variants and the YEJMKJ DevKit) drop the serial monitor connection when the sensor enters
-deep sleep. The monitor reconnects automatically on the next wake. This is expected
-behaviour — not a crash. The Adafruit HUZZAH32 and the Espressif ESP32-C6-DevKitC-1-N8
-(left USB-C port) maintain the connection throughout sleep because they use a UART bridge
-chip that remains powered.
-
-**Seeed XIAO ESP32-C5 note**: this is the only board in the catalog that can scan 5 GHz
-access points. If `CONFIG_TARGET_SSID_*` includes a dual-band AP, the C5 may report
-RSSI values for that AP's 5 GHz radio that are invisible to all other boards. This is a
-feature, not an inconsistency — it extends the usefulness of this board for RF
-environment mapping across both bands.
 
 ## Roles
 
