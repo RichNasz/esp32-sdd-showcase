@@ -1,0 +1,13 @@
+# ESP-NOW Low-Power Mesh — ESP32 (original) board overrides
+# Applies to: Adafruit HUZZAH32, generic ESP32 DevKit boards
+# Layer over sdkconfig.defaults before any role override.
+
+# Override USB CDC from base sdkconfig.defaults (ESP32 has no native USB)
+CONFIG_ESP_CONSOLE_USB_CDC=n
+
+# LED: GPIO 13, active HIGH (Adafruit HUZZAH32 red LED)
+CONFIG_MESH_BLINK_GPIO=13
+CONFIG_MESH_BLINK_ACTIVE_LOW=n
+CONFIG_TARGET_SSID_1="NaszGo"                                                                                                               
+CONFIG_TARGET_SSID_2="NaszGoEdge"                                                                                                                
+CONFIG_TARGET_SSID_3="NETGEAR39" 

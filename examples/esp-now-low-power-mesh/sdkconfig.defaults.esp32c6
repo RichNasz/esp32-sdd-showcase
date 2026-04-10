@@ -1,0 +1,14 @@
+# ESP-NOW Low-Power Mesh — ESP32-C6 board overrides
+# Applies to: Espressif ESP32-C6-DevKitC-1-N8, Seeed XIAO ESP32-C6
+# Layer over sdkconfig.defaults before any role override.
+
+# USB Serial/JTAG replaces USB CDC (ESP32-C6 has no OTG peripheral)
+CONFIG_ESP_CONSOLE_USB_CDC=n
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# LED: WS2812B on GPIO 8 (ESP32-C6-DevKitC-1-N8) — requires RMT driver
+CONFIG_MESH_BLINK_GPIO=8
+CONFIG_MESH_LED_WS2812=y
+CONFIG_TARGET_SSID_1="NaszGo"                                                                                                               
+CONFIG_TARGET_SSID_2="NaszGoEdge"                                                                                                                
+CONFIG_TARGET_SSID_3="NETGEAR39" 

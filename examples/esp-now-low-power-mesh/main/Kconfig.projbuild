@@ -1,0 +1,116 @@
+menu "ESP-NOW Mesh Configuration"
+
+choice NODE_ROLE
+    prompt "Node role"
+    default NODE_ROLE_SENSOR
+    help
+        Select the role compiled into this firmware image.
+        Build once per role; all boards of the same role receive the same binary.
+
+config NODE_ROLE_SENSOR
+    bool "Sensor"
+    help
+        Wake from deep sleep, scan WiFi RSSI for configured SSIDs, transmit to gateway.
+
+config NODE_ROLE_RELAY
+    bool "Relay"
+    help
+        Always-on forwarder. Receives from sensors, forwards to gateway with deduplication.
+
+config NODE_ROLE_GATEWAY
+    bool "Gateway"
+    help
+        Always-on receiver. Broadcasts beacon for dynamic discovery, logs all received packets.
+
+config NODE_ROLE_SENSOR_RELAY
+    bool "Sensor+Relay (light sleep)"
+    help
+        Combines sensor and relay roles using ESP-IDF light sleep. The radio stays alive
+        in periodic listen mode so ESP-NOW receive (relay forwarding) works while the CPU
+        is halted. A periodic timer wakes the node to run a WiFi RSSI scan and transmit
+        its own payload. Average current ~1-5 mA — much lower than an always-on relay,
+        higher than a deep-sleeping sensor.
+
+endchoice
+
+config ESPNOW_CHANNEL
+    int "ESP-NOW WiFi channel"
+    default 1
+    range 1 13
+    help
+        WiFi channel shared by all nodes in the mesh. Every node must use the same value.
+        Channel mismatch is the most common silent failure in ESP-NOW deployments.
+
+config SENSOR_SLEEP_SEC
+    int "Sensor deep sleep duration (seconds)"
+    default 60
+    range 10 3600
+    help
+        How long the sensor sleeps between WiFi scans and transmissions.
+        Only used by the sensor role; ignored by relay and gateway.
+
+config SENSOR_RELAY_SCAN_INTERVAL_SEC
+    int "Sensor-relay scan interval (seconds)"
+    default 60
+    range 10 3600
+    help
+        How often the sensor-relay node runs a WiFi RSSI scan and sends its own payload.
+        Between scans the node is in light sleep, forwarding packets from other sensors.
+        Only used by the SENSOR_RELAY role; ignored by all other roles.
+
+config TARGET_SSID_1
+    string "Target SSID 1"
+    default ""
+    help
+        First SSID to scan for RSSI. Empty string disables this slot (reports -128 dBm).
+        Only used by the sensor role; ignored by relay and gateway.
+
+config TARGET_SSID_2
+    string "Target SSID 2"
+    default ""
+    help
+        Second SSID to scan for RSSI. Empty string disables this slot.
+        Only used by the sensor role; ignored by relay and gateway.
+
+config TARGET_SSID_3
+    string "Target SSID 3"
+    default ""
+    help
+        Third SSID to scan for RSSI. Empty string disables this slot.
+        Only used by the sensor role; ignored by relay and gateway.
+
+config MESH_BLINK_GPIO
+    int "LED GPIO number"
+    default 21
+    range 0 48
+    help
+        GPIO connected to the user LED. Default 21 is the XIAO ESP32S3 orange LED.
+        Update for other boards (e.g. 13 for HUZZAH32, 15 for XIAO ESP32-C6).
+
+config MESH_LED_WS2812
+    bool "LED is a WS2812B addressable RGB (requires RMT driver)"
+    default n
+    help
+        Set for boards whose LED is a WS2812B NeoPixel (e.g. ESP32-C6-DevKitC-1-N8 GPIO 8,
+        YEJMKJ ESP32-S3-DevKitC-1-N16R8 GPIO 48). gpio_set_level() has no effect on these
+        LEDs; the RMT peripheral generates the required 800 kHz NRZ waveform instead.
+        When set: green = success/activity, red = failure, off = idle.
+        When clear: simple GPIO toggle is used (active-HIGH or active-LOW per MESH_BLINK_ACTIVE_LOW).
+
+config MESH_BLINK_ACTIVE_LOW
+    bool "LED is active LOW (ON when GPIO = LOW)"
+    default y
+    help
+        Set for boards where the LED turns on when the GPIO is driven LOW (default).
+        Clear for active-HIGH boards such as the Adafruit HUZZAH32 (GPIO 13, active HIGH).
+        Not applicable when MESH_LED_WS2812 is set (WS2812 path ignores this symbol).
+
+config MESH_LED_TASK_STACK_SIZE
+    int "LED task stack size (bytes)"
+    default 2048
+    range 1024 8192
+    help
+        Stack size for the mesh_led_task. 2048 bytes is sufficient for the task
+        notification wait, gpio_set_level call, and vTaskDelay.
+
+endmenu

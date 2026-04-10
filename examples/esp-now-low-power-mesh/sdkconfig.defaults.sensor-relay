@@ -1,0 +1,12 @@
+# ESP-NOW Low-Power Mesh — sensor-relay role override
+# Layer over sdkconfig.defaults (and optionally a board layer) before building.
+# SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.<board>;sdkconfig.defaults.sensor-relay"
+
+CONFIG_NODE_ROLE_SENSOR_RELAY=y
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# Light sleep via ESP-IDF power management.
+# CPU halts during FreeRTOS idle; radio stays in DTIM listen mode for ESP-NOW receive.
+CONFIG_PM_ENABLE=y
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE=y

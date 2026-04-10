@@ -1,0 +1,19 @@
+# ESP-NOW Low-Power Mesh — common + sensor role defaults (Seeed XIAO ESP32S3)
+CONFIG_NODE_ROLE_SENSOR=y
+
+# Console: XIAO ESP32S3 uses native USB CDC (no UART bridge)
+CONFIG_ESP_CONSOLE_USB_CDC=y
+
+# Sensor app_main stack: 6144 bytes for WiFi scan buffers + ESP-NOW init/deinit frames
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# Task watchdog: 10-second timeout, sensor deletes itself before deep sleep
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+
+# Stack overflow detection via canary
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+
+# Log level: INFO for operational events
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_DEFAULT_LEVEL=3

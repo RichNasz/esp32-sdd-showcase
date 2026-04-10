@@ -142,3 +142,49 @@ The Testing section must appear after "Key Concepts" and before "Spec Files". It
 
 If `specs/TestSpec.md` does not exist for an example, omit the Testing section entirely from
 the README. Do not generate a placeholder.
+
+---
+
+## Per-Board Behavior Section Generation
+
+Every example README.md that supports more than one board must include a **Per-Board
+Behavior** section. This section answers a different question than the supported boards
+table: not *"what do I need to change?"* but *"what will I observe differently?"*
+
+### When to include
+
+Include this section whenever `specs/FunctionalSpec.md` documents two or more boards in
+its Supported Boards section. If only one board is supported, omit the section entirely.
+
+### Required position
+
+The Per-Board Behavior section must appear immediately after the Supported Boards table
+and before the Build & Flash section.
+
+### Required content
+
+The section must contain a table with one row per supported board and one column per
+behavioral dimension that varies across boards. Only include columns where at least one
+board differs from the default. Common dimensions to check (draw data from
+`specs/FunctionalSpec.md` — do not invent values):
+
+- **Serial monitor during deep sleep**: whether the monitor connection drops and
+  reconnects (native USB CDC / Serial/JTAG boards) or stays connected (UART bridge
+  boards). This is the most common surprise for users switching boards.
+- **LED feedback**: color-capable (WS2812) vs on/off (simple GPIO), and what each
+  state means (e.g. green = success, red = failure).
+- **Sensor data scope**: whether the board's radio covers extra bands or frequencies
+  compared to the default (e.g. dual-band WiFi scanning 5 GHz APs).
+- **Deep sleep current floor**: the measured or datasheet deep sleep current, relevant
+  for battery life planning.
+
+Always source values from the FunctionalSpec.md Per-Board Behavior table. Never derive
+them independently from board-spec files — the FunctionalSpec is the single source of
+truth for this example's behavioral claims.
+
+### Formatting rules
+
+- Use spaced table separators `| --- | --- |`.
+- Bold the default board row label or mark it *(default)*.
+- Add a short paragraph after the table calling out the single most consequential
+  behavioral difference for a first-time user (typically serial monitor dropout).

@@ -80,16 +80,18 @@ Hardware: 2× XIAO ESP32S3. One or more real WiFi access points in range.
 
 Setup:
 
-1. Build and flash board A as gateway (use `sdkconfig.defaults.gateway` override). Note
-   its MAC address from the serial log on startup.
-2. Configure `CONFIG_TARGET_SSID_1` (and optionally SSID 2/3) to match known APs in
-   the environment. Set `CONFIG_NODE_ID=1`. Build and flash board B as sensor.
+1. Build gateway firmware once:
+   `SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.gateway" idf.py fullclean build`
+   Flash board A. Note the `node_id=NN mac=AA:BB:CC:DD:EE:FF` line from its startup log.
+2. Build sensor firmware once (configure `CONFIG_TARGET_SSID_1` to a known AP SSID first):
+   `idf.py build`
+   Flash board B with the same binary. Note its `node_id` from the startup log.
 
 Steps:
 
 1. Power on gateway (board A) first. Confirm beacon broadcast log every 5 seconds.
 2. Power on sensor (board B). Confirm it logs "gateway discovered" after beacon reception.
-3. Watch gateway serial monitor for 5 consecutive receive log lines from node_id=1.
+3. Watch gateway serial monitor for 5 consecutive receive log lines showing board B's node_id.
 4. Confirm `msg_count` increments by 1 on each packet (no drops).
 5. Confirm `hop_count = 0` on all received packets (direct path).
 6. Confirm at least one `rssi[]` value is in the range –30 to –90 dBm for a known AP.
@@ -110,8 +112,9 @@ or attenuate with a metal enclosure).
 
 Setup:
 
-1. Flash board A as gateway. Flash board B as relay. Flash board C as sensor
-   (`CONFIG_NODE_ID=2`).
+1. Flash board A with gateway firmware, board B with relay firmware, board C with sensor
+   firmware. All boards of the same role receive the identical binary — no per-device
+   build needed. Note the `node_id` printed on each board's startup log.
 2. Power on gateway, then relay, then sensor.
 
 Steps:
@@ -119,7 +122,7 @@ Steps:
 1. Confirm gateway logs beacon every 5 seconds.
 2. Confirm relay logs "gateway discovered" and enters receive mode.
 3. Confirm sensor logs "gateway discovered" via relay beacon reception or direct beacon.
-4. Watch gateway for 5 consecutive packets from node_id=2.
+4. Watch gateway for 5 consecutive packets from board C's node_id (shown on its startup log).
 5. Confirm `hop_count = 1` on received packets (one relay hop).
 6. Confirm relay serial log shows forwarded packets with incremented hop_count.
 

@@ -128,6 +128,39 @@ The guiding principle: "The model we use today is the worst model we will ever u
 
 If you find yourself writing a function call, a struct definition, or a numbered sequence of API calls in CodingSpec.md, stop and reframe it as an architectural constraint or a trade-off decision. (Feb 2026)
 
+- **`static_assert` requires `<assert.h>` in C17 — use `_Static_assert` instead.**
+  `static_assert` is a convenience macro defined in `<assert.h>`. Without including that header,
+  the compiler sees it as a function call and fails with "expected declaration specifiers or '...'
+  before 'sizeof'". `_Static_assert` is a built-in C11/C17 keyword that requires no include and
+  works directly in ESP-IDF. Always prefer `_Static_assert` in generated code. (Apr 2026)
+
+- **`MACSTR` and `MAC2STR` are defined in `esp_mac.h`, not `esp_log.h`.**
+  In ESP-IDF 5.x, the `MACSTR`/`MAC2STR` helper macros live in `esp_hw_support/include/esp_mac.h`.
+  Any source file that uses `MACSTR` or `MAC2STR` must `#include "esp_mac.h"` explicitly. Do not
+  rely on transitive inclusion from `esp_log.h` — it no longer provides these macros. (Apr 2026)
+
+- **ESP-NOW send callback signature changed in ESP-IDF 5.5.x.**
+  In ESP-IDF 5.5.x, `esp_now_send_cb_t` was changed from `(const uint8_t *mac_addr, status)` to
+  `(const esp_now_send_info_t *tx_info, esp_now_send_status_t status)` where `esp_now_send_info_t`
+  is a typedef for `wifi_tx_info_t` (fields: `des_addr`, `src_addr`, `data`, etc.). Any send_cb
+  with the old signature causes "incompatible pointer type" at compile time. Update all ESP-NOW send
+  callbacks to the new signature and cast unused parameters to `(void)`. (Apr 2026)
+
+- **`idf_monitor` requires an interactive TTY — cannot run inside Claude Code.**
+  `idf.py flash monitor` fails at the monitor step with "Monitor requires standard input to be
+  attached to TTY" when run inside Claude Code's non-interactive bash shell. Flash succeeds
+  normally. Always separate flash and monitor: run `idf.py flash` via Claude Code, then open
+  the monitor separately in a real terminal with `idf.py monitor -p <port>`. (Apr 2026)
+
+- **Kconfig `depends on` hides symbols when all role files compile together.**
+  In a multi-role firmware where all .c files (sensor.c, relay.c, gateway.c) are always compiled
+  regardless of the active role, any Kconfig symbol with `depends on NODE_ROLE_RELAY` will be
+  undefined (evaluates to 0 or causes "undeclared identifier") when the sensor role is active.
+  Never add `depends on` to symbols that are referenced in source files compiled for all roles.
+  Only add `depends on` to symbols that are only used in Kconfig itself (e.g., to conditionally
+  show menu items) or to symbols whose absence would be caught at link time rather than compile
+  time. (Apr 2026)
+
 ## Template for Adding New Lessons
 When you discover something important:
 - Add it here under "Key Lessons Learned"

@@ -1,0 +1,8 @@
+# ESP-NOW Low-Power Mesh — relay role override
+# Layer over sdkconfig.defaults:
+#   SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.relay"
+CONFIG_NODE_ROLE_SENSOR=n
+CONFIG_NODE_ROLE_RELAY=y
+
+# Relay app_main stack: 4096 bytes — init frames only, no scan buffer needed
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096

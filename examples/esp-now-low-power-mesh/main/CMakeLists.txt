@@ -1,0 +1,19 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "mesh_common.c"
+        "sensor.c"
+        "relay.c"
+        "gateway.c"
+        "sensor_relay.c"
+    INCLUDE_DIRS "."
+    REQUIRES
+        esp_wifi
+        nvs_flash
+        esp_timer
+        driver
+        esp_driver_rmt
+        esp_system
+        esp_hw_support
+        esp_pm
+)

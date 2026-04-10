@@ -2,15 +2,18 @@
 
 ## Overview
 
-Infrastructure-free multi-hop sensor network. Three roles run on the same firmware,
+Infrastructure-free multi-hop sensor network. Four roles run on the same firmware,
 selected by a Kconfig option: **sensor node** (sleeps 60 seconds between transmissions,
 wakes to scan nearby WiFi access points for signal strength, packages real RSSI data
 into an ESP-NOW packet, routes the packet toward the gateway through one or more hops,
 then sleeps again); **relay node** (always-on, receives sensor packets and forwards them
-toward the gateway, adding a hop to the path, deduplicating retransmits); and
-**gateway node** (always-on, broadcasts a beacon so nodes can discover it without a
-hardcoded MAC address, receives and logs all packets, records hop count and per-SSID
-RSSI values).
+toward the gateway, adding a hop to the path, deduplicating retransmits); **gateway
+node** (always-on, broadcasts a beacon so nodes can discover it without a hardcoded MAC
+address, receives and logs all packets, records hop count and per-SSID RSSI values); and
+**sensor-relay node** (uses ESP-IDF light sleep to forward other sensors' packets while
+dormant, then periodically wakes on a timer to run its own WiFi scan and transmit its own
+payload — bridging the gap between deep-sleeping sensors and always-on relays in
+power-constrained deployments).
 
 This example demonstrates:
 
@@ -22,7 +25,96 @@ This example demonstrates:
 
 ## Supported Boards
 
-- Seeed XIAO ESP32S3 (default, all roles use the same board)
+The example is written for the Seeed XIAO ESP32S3 by default. All boards in the
+current `board-specs/` catalog that carry a WiFi-capable SoC are compatible. The table
+below lists each board, the per-board adaptations required in `sdkconfig.defaults`, and
+any notes affecting the LED blink logic.
+
+| Board | board-spec file | idf.py target | LED GPIO | LED polarity | LED type | USB console sdkconfig entry |
+| --- | --- | --- | --- | --- | --- | --- |
+| Seeed XIAO ESP32S3 *(default)* | `seeed/xiao-esp32s3.md` | `esp32s3` | GPIO 21 | Active LOW | Simple GPIO | `CONFIG_ESP_CONSOLE_USB_CDC=y` |
+| YEJMKJ ESP32-S3-DevKitC-1-N16R8 | `yejmkj/esp32-s3-devkitc-1-n16r8.md` | `esp32s3` | GPIO 48 | — | WS2812 RGB ¹ | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
+| Adafruit HUZZAH32 | `adafruit/huzzah32.md` | `esp32` | GPIO 13 | Active HIGH | Simple GPIO | None (CP2104 UART bridge) |
+| Espressif ESP32-C6-DevKitC-1-N8 | `espressif/esp32-c6-devkitc-1-n8.md` | `esp32c6` | GPIO 8 | — | WS2812 RGB ¹ | None (UART bridge on left USB-C port) |
+| Seeed XIAO ESP32-C6 | `seeed/xiao-esp32c6.md` | `esp32c6` | GPIO 15 | Active LOW | Simple GPIO | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
+| Seeed XIAO ESP32-C5 | `seeed/xiao-esp32c5.md` | `esp32c5` | GPIO 27 | Active LOW | Simple GPIO | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
+
+¹ **WS2812 boards**: GPIO 48 (YEJMKJ) and GPIO 8 (ESP32-C6-DevKitC) drive an addressable
+RGB LED that requires an RMT or SPI-based driver — `gpio_set_level()` alone will not
+produce visible output. When adapting the example for these boards, replace the simple
+GPIO blink with a single-pixel WS2812 write (green for success, red for failure, off for
+sleep). All other compatibility requirements are identical.
+
+> **All boards in this table support the SENSOR_RELAY role.** Light sleep + ESP-NOW receive
+> is available on every WiFi-capable ESP32 SoC supported by ESP-IDF 5.x.
+
+> **Excluded SoCs**: The ESP32-H2 has no WiFi radio and therefore cannot run ESP-NOW.
+> Any board built on the H2 is incompatible with this example regardless of other
+> capabilities.
+
+## Board Compatibility Checklist
+
+Use this checklist when evaluating a new board added to `board-specs/` in the future.
+A board is compatible with this example if and only if it passes all required checks.
+
+### Required checks (any failure = incompatible)
+
+- [ ] **WiFi present**: the board-spec documents a WiFi radio (802.11b/g/n or ax).
+  ESP-NOW is a WiFi-layer protocol — boards without WiFi (e.g. ESP32-H2) cannot
+  participate. Confirm in the board-spec's Module / SoC table.
+- [ ] **Deep sleep with RTC timer**: the board-spec documents a deep sleep current
+  figure and does not flag timer wakeup as unsupported. All current ESP32-family SoCs
+  support RTC timer wakeup; verify for any new SoC family.
+- [ ] **idf.py target listed as Supported** in `shared-specs/esp-idf-version.md`.
+  If the target row is absent or marked unsupported, do not use this board until the
+  shared spec is updated.
+- [ ] **At least one user-controllable LED**: the board-spec documents a GPIO connected
+  to an LED (simple or addressable). The example uses the LED for send-success, send-
+  failure, and packet-received indication; it cannot run meaningfully without one.
+
+### Adaptation checks (compatible, but requires per-board sdkconfig or code change)
+
+- [ ] **USB console type**: check the "USB Serial / Console" section of the board-spec.
+  - USB-UART bridge (e.g. CP2104): no sdkconfig entry needed.
+  - Native USB Serial/JTAG (ESP32-C3/C6/C5/H2): add `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y`
+    to the board's `sdkconfig.defaults.<target>` file.
+  - Native USB OTG/CDC (ESP32-S2/S3): add `CONFIG_ESP_CONSOLE_USB_CDC=y` to the board's
+    `sdkconfig.defaults.<target>` file.
+- [ ] **LED GPIO and polarity**: note the GPIO number and whether the LED is active HIGH
+  or active LOW. Update `CONFIG_BLINK_GPIO` (or equivalent Kconfig) and invert the
+  drive logic if the new board differs from the default (active LOW).
+- [ ] **LED type — WS2812 vs simple GPIO**: if the board-spec notes the LED is an
+  addressable RGB (WS2812/SK6812), the firmware blink logic must be replaced with a
+  single-pixel RMT write. Simple `gpio_set_level()` will not work.
+- [ ] **ADC channel availability**: not required by this example (RSSI is obtained via
+  the WiFi scan API, not ADC). No action needed, but note for future features.
+
+## Per-Board Behavior
+
+How the example behaves differently depending on which board is used. Values are drawn
+from the board-specs listed above.
+
+| Board | Serial monitor during deep sleep | LED feedback | WiFi scan coverage | Deep sleep floor |
+| --- | --- | --- | --- | --- |
+| Seeed XIAO ESP32S3 *(default)* | Drops and reconnects on wake (native USB CDC) | On / off, active LOW | 2.4 GHz only | ~14 µA |
+| YEJMKJ ESP32-S3-DevKitC-1-N16R8 | Drops and reconnects on wake (native USB Serial/JTAG) | Color: green = success, red = failure, off = sleep (WS2812) | 2.4 GHz only | ~7 µA |
+| Adafruit HUZZAH32 | Stays connected throughout sleep (CP2104 UART bridge) | On / off, active HIGH | 2.4 GHz only | See board-spec |
+| Espressif ESP32-C6-DevKitC-1-N8 | Stays connected via left USB-C UART bridge | Color: green = success, red = failure, off = sleep (WS2812) | 2.4 GHz (WiFi 6 ax) | ~7–15 µA |
+| Seeed XIAO ESP32-C6 | Drops and reconnects on wake (native USB Serial/JTAG) | On / off, active LOW | 2.4 GHz (WiFi 6 ax) | ~15 µA |
+| Seeed XIAO ESP32-C5 | Drops and reconnects on wake (native USB Serial/JTAG) | On / off, active LOW | **2.4 GHz + 5 GHz** (dual-band WiFi 6) | ~8 µA |
+
+**Most consequential difference for first-time users**: boards with native USB (all XIAO
+variants and the YEJMKJ DevKit) drop the serial monitor connection when the sensor enters
+deep sleep. The monitor reconnects automatically on the next wake. This is expected
+behaviour — not a crash. The Adafruit HUZZAH32 and the Espressif ESP32-C6-DevKitC-1-N8
+(left USB-C port) maintain the connection throughout sleep because they use a UART bridge
+chip that remains powered.
+
+**Seeed XIAO ESP32-C5 note**: this is the only board in the catalog that can scan 5 GHz
+access points. If `CONFIG_TARGET_SSID_*` includes a dual-band AP, the C5 may report
+RSSI values for that AP's 5 GHz radio that are invisible to all other boards. This is a
+feature, not an inconsistency — it extends the usefulness of this board for RF
+environment mapping across both bands.
 
 ## Roles
 
@@ -30,17 +122,28 @@ This example demonstrates:
 
 - Wake from deep sleep every 60 seconds using the RTC timer.
 - On wake: increment `RTC_DATA_ATTR uint16_t msg_count`.
-- If `RTC_DATA_ATTR` gateway MAC cache is empty (all zeros), listen on the ESP-NOW
-  channel for a gateway beacon for up to 2 seconds. Cache the sender's MAC address.
-  If no beacon arrives within 2 seconds, log a warning and return to deep sleep.
+- If the cached next-hop MAC (stored in RTC memory) is empty (all zeros), run
+  the two-phase discovery window:
+  1. Listen on the ESP-NOW channel for up to 2 seconds.
+  2. On receiving a **gateway beacon** (`node_type == ESPNOW_NODE_GATEWAY`): record
+     the sender MAC as the next-hop and unblock immediately.
+  3. On receiving a **relay beacon** (`node_type == ESPNOW_NODE_RELAY`) during the
+     wait window: save the sender MAC as a fallback candidate and keep listening for
+     a gateway beacon.
+  4. If the 2-second window expires with a gateway beacon received: use the gateway.
+  5. If the window expires with only a relay beacon received: use the relay as the
+     next hop and cache its MAC (with `node_type = ESPNOW_NODE_RELAY`).
+  6. If neither beacon type was received: log a warning and return to deep sleep.
 - Run an active WiFi scan targeting up to three SSIDs configured via Kconfig
   (`CONFIG_TARGET_SSID_1`, `CONFIG_TARGET_SSID_2`, `CONFIG_TARGET_SSID_3`).
   Record RSSI (dBm, int8_t) for each found SSID. Use `INT8_MIN` (–128) for SSIDs
   not found during the scan window.
 - Deinitialize the WiFi scan and reinitialize ESP-NOW on the fixed channel.
-- Send one ESP-NOW unicast packet to the cached gateway MAC. Set `hop_count = 0`.
+- Send one ESP-NOW unicast packet to the cached next-hop MAC (gateway or relay).
+  Set `hop_count = 0` — the relay increments it on forwarding.
+- Log whether the packet is being sent directly to the gateway or via a relay node.
 - Wait up to 200 ms for the send callback. On success: blink LED once. On failure:
-  fast-blink LED, invalidate the gateway MAC cache in RTC memory, and log a warning.
+  fast-blink LED, invalidate the next-hop MAC cache in RTC memory, and log a warning.
 - Deinitialize ESP-NOW and stop WiFi cleanly before entering deep sleep.
 
 ### Role 2 — RELAY
@@ -52,7 +155,15 @@ This example demonstrates:
   - Increment `hop_count` by 1.
   - Forward the packet via ESP-NOW unicast to the cached gateway MAC.
   - Blink LED once.
-- Listen for gateway beacon on startup and cache the gateway MAC (same mechanism as sensor).
+- Listen for a **gateway beacon** (`node_type == ESPNOW_NODE_GATEWAY`) on startup and
+  cache the gateway MAC. Ignore beacons with `node_type == ESPNOW_NODE_RELAY`.
+- **After the gateway MAC is cached**, begin broadcasting its own relay beacon every
+  `ESPNOW_BEACON_INTERVAL_MS` to the broadcast address (`FF:FF:FF:FF:FF:FF`). The relay
+  beacon carries `node_type = ESPNOW_NODE_RELAY` so sensors can identify it and use it
+  as a fallback next hop. A relay only broadcasts after it has a valid gateway path —
+  this prevents sensors from routing through a relay that is itself disconnected.
+- If the gateway is not found within the 2-second discovery window, continue in receive
+  mode and start broadcasting once a gateway beacon arrives later.
 - Log forwarded packets over serial (node_id, msg_count, hop_count, RSSI values).
 
 ### Role 3 — GATEWAY
@@ -61,22 +172,98 @@ This example demonstrates:
 - On startup: broadcast a beacon packet every 5 seconds to the ESP-NOW broadcast
   address (`FF:FF:FF:FF:FF:FF`). The beacon carries only a type byte and sequence
   number; the gateway MAC is implicit from the sender address seen by the receiver.
-- Register an `esp_now_recv_cb_t` callback. On each received `espnow_payload_t`:
-  log node_id, msg_count, hop_count, and all three RSSI values over serial.
-  Blink LED once per received packet.
-- Accept packets from any MAC address. Do not require pre-registered peers in
-  the receive path.
-- Log beacon sequence number over serial on each broadcast for diagnostics.
+- Register an `esp_now_recv_cb_t` callback. Accept packets from any MAC address.
+  Do not require pre-registered peers in the receive path.
+- Blink LED once per received packet.
+- Display a real-time ANSI TUI dashboard over the serial monitor:
+  - **Fixed header** (rows 1–5): title bar with channel, node ID, and MAC address;
+    status line with beacon pulse indicator (`[*]` green for 2 s after each beacon,
+    `[ ]` gray otherwise), beacon count, uptime, and total packet count; separator
+    lines; column headers labelled with the three configured SSID names.
+  - **Scroll region** (row 6 and below): one line per received packet, appended and
+    scrolled automatically. Each line shows arrival timestamp, role and path
+    (`[S/direct]`, `[SR/relayed]`, etc.), node ID, sequence number, hop count, and
+    RSSI for each configured SSID.
+  - **Color coding**: sensor role lines in green, sensor-relay in yellow; RSSI values
+    in green (> −60 dBm), yellow (> −80 dBm), red (≤ −80 dBm), or gray (not found).
+  - **Hidden cursor**: terminal cursor is hidden for the lifetime of the monitor
+    session so the fixed header rows appear fully static.
+  - All screen output is serialized through the main task. The beacon timer callback
+    and the ESP-NOW receive callback only update shared state and post a FreeRTOS
+    task notification; they never write to the terminal directly.
+
+### Role 4 — SENSOR_RELAY
+
+- Initialize WiFi in STA mode and ESP-NOW on the fixed channel.
+- Configure ESP-IDF power management (`CONFIG_PM_ENABLE` + tickless idle) for light sleep.
+  The radio remains in periodic listen mode during light sleep; ESP-NOW receive callbacks
+  fire normally when a packet arrives, waking the CPU for the duration of the callback.
+- **Relay behaviour** (identical to Role 2):
+  - Register recv_cb. On receiving `espnow_payload_t`: dedup check, increment hop_count,
+    forward to cached gateway MAC, notify LED task.
+  - Listen for **gateway beacon** (`node_type == ESPNOW_NODE_GATEWAY`) on startup; cache
+    gateway MAC. Ignore beacons with `node_type == ESPNOW_NODE_RELAY`.
+  - **After the gateway MAC is cached**, broadcast its own relay beacon every
+    `ESPNOW_BEACON_INTERVAL_MS` (same logic as the RELAY role) so sensor nodes can
+    route through this node when the gateway is out of direct range.
+- **Sensor behaviour** (timer-driven, not deep-sleep-driven):
+  - Start a periodic `esp_timer` firing every `CONFIG_SENSOR_RELAY_SCAN_INTERVAL_SEC`
+    seconds.
+  - On timer fire: unregister recv_cb, deinit ESP-NOW, run WiFi RSSI scan (same logic as
+    sensor role), reinit ESP-NOW on fixed channel, send `espnow_payload_t` to gateway,
+    re-register recv_cb. Resume light sleep.
+  - Increment `msg_count` in a static (non-RTC) variable — no deep sleep, so RTC memory
+    is not needed.
+  - Gateway MAC is stored in a static variable (not RTC) for the same reason.
+- On discovery timeout at startup: continue in relay-only mode; next timer fire retries
+  the send. Log a warning. Relay beacon starts as soon as gateway MAC is first seen.
+- The relay function is unavailable during the ~2–3 s scan+send window each cycle.
+  At a 60 s interval this is < 5% downtime — acceptable for a mesh.
+
+## Node Identity
+
+Each node derives its `node_id` at runtime from its factory-burned WiFi STA MAC address
+(last byte, `mac[5]`). This means all boards flashed with the same role firmware are
+identical — no per-device build or provisioning step is required. Each board self-
+identifies uniquely because every ESP32 MAC is globally unique.
+
+On every boot, the node logs its derived `node_id` alongside its full MAC address so
+that operators can cross-reference node IDs to physical boards from the serial output
+alone. The gateway's receive callback also carries the source MAC, which is logged with
+every received packet for the same purpose.
+
+If `mac[5]` is `0x00` or `0xFF` (pathological values that should never occur on
+production silicon), the node falls back to `mac[4]` as the identifier.
+
+## Deploying Multiple Nodes
+
+**One firmware binary per role. No per-device compilation.**
+
+1. **Build once per role** — four total builds: gateway, relay, sensor, sensor-relay.
+   All boards of the same role receive the same binary.
+2. **Flash gateway first** — power it on before any other node. It must be broadcasting
+   its beacon before sensors and relays attempt discovery.
+3. **Flash relays** — all relay boards receive the identical relay binary. Power on
+   after the gateway.
+4. **Flash sensors** — all sensor boards receive the identical sensor binary. Power on
+   last, or at any time after the gateway is running.
+5. **Identify each device** — on boot, every node prints:
+   `node_id=NN mac=AA:BB:CC:DD:EE:FF role=SENSOR`. The gateway log includes the source
+   MAC on every received packet. Use these to build a `node_id → physical board` map
+   for your deployment.
+6. **Shared configuration** — `ESPNOW_CHANNEL`, `SENSOR_SLEEP_SEC`, and `TARGET_SSID_*`
+   are the same across all nodes of a given role and are baked into the role firmware at
+   build time. No per-device configuration is needed.
 
 ## Shared Payload Struct
 
 ```c
 typedef struct __attribute__((packed)) {
-    uint8_t  node_id;    /* sender identifier, 1–254 (Kconfig)     */
-    uint16_t msg_count;  /* monotonic counter, RTC_DATA_ATTR        */
-    uint8_t  hop_count;  /* 0 = direct to gateway, 1+ = relayed    */
-    int8_t   rssi[3];    /* RSSI per configured SSID; INT8_MIN=none */
-    uint8_t  _pad;       /* reserved, set to 0                      */
+    uint8_t  node_id;    /* last byte of WiFi STA MAC (runtime)          */
+    uint16_t msg_count;  /* monotonic counter, RTC_DATA_ATTR             */
+    uint8_t  hop_count;  /* 0 = direct to gateway, 1+ = relayed         */
+    int8_t   rssi[3];    /* RSSI per configured SSID; INT8_MIN=none      */
+    uint8_t  role;       /* ESPNOW_ROLE_SENSOR=0, ESPNOW_ROLE_SENSOR_RELAY=1 */
 } espnow_payload_t;      /* 8 bytes — well under 250-byte ESP-NOW limit */
 ```
 
@@ -85,7 +272,9 @@ typedef struct __attribute__((packed)) {
 - Board-spec: `board-specs/seeed/xiao-esp32s3.md` (ESP32-S3, LED GPIO 21 active LOW)
 - No external components required.
 - Minimum deployment for full mesh demonstration: 3 × XIAO ESP32S3 boards
-  (1 gateway, 1 relay, 1 sensor).
+  (1 gateway, 1 relay, 1 sensor). A sensor-relay can substitute for a separate relay
+  and sensor pair: 2-board deployment with 1 gateway + 1 sensor-relay also demonstrates
+  the full architecture.
 - 2-board deployment (gateway + sensor, no relay) is valid for verifying the direct
   delivery path.
 - One or more real WiFi access points must be present in the environment for RSSI
@@ -107,6 +296,20 @@ typedef struct __attribute__((packed)) {
 > The WiFi scan is the dominant cost. Reducing configured SSIDs or limiting scan
 > channels in `sdkconfig.defaults` can push average below 500 µA.
 
+## Power Budget (sensor-relay node)
+
+| State | Current | Duration | Notes |
+| --- | --- | --- | --- |
+| Light sleep (relaying) | ~1–5 mA | ~57–59 s | Radio listens on DTIM beacon interval |
+| WiFi scan | ~80 mA | ~300 ms | Every `SENSOR_RELAY_SCAN_INTERVAL_SEC` |
+| ESP-NOW TX + teardown | ~50 mA | ~200 ms | Per scan cycle |
+| LED blink (relay fwd) | ~10 mA | ~20 ms | Per forwarded packet |
+| **Target average** | **~3–8 mA** | — | Dominated by light sleep radio listen |
+
+> Significantly higher than a deep-sleeping pure sensor (~0.68 mA avg), but an order of
+> magnitude lower than an always-on relay (~80–150 mA). The right choice when a node
+> must simultaneously extend mesh coverage and report its own measurements.
+
 ## Success Criteria
 
 - Gateway receives a packet from each sensor node on every 60-second wake cycle.
@@ -118,3 +321,14 @@ typedef struct __attribute__((packed)) {
 - Sensor active window (wake to sleep) is ≤ 600 ms per serial timestamps.
 - Sensor returns to deep sleep within 600 ms of wake even when no gateway is reachable.
 - Gateway MAC is not required as a compile-time constant; it is discovered via beacon.
+- SENSOR_RELAY node forwards packets from other sensors (gateway sees hop_count ≥ 1) AND
+  sends its own payloads with hop_count=0 on the configured interval.
+- Serial monitor on a SENSOR_RELAY node remains connected continuously — no deep-sleep
+  disconnect events.
+- Relay and sensor-relay nodes do not broadcast their own beacons until they have a
+  valid gateway MAC — preventing sensors from routing through a disconnected relay.
+- When gateway is out of direct range but a relay is reachable, the sensor discovers
+  the relay via its relay beacon and routes through it. Gateway receives the packet
+  with `hop_count = 1`.
+- When both gateway and relay beacons are received during the discovery window, the
+  sensor prefers the gateway beacon and sends directly (`hop_count = 0`).
