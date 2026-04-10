@@ -310,6 +310,56 @@ typedef struct __attribute__((packed)) {
 > magnitude lower than an always-on relay (~80–150 mA). The right choice when a node
 > must simultaneously extend mesh coverage and report its own measurements.
 
+## Limitations and Topology Characterization
+
+This example implements a **tree topology with dynamic discovery and partial recovery**
+— not a self-healing mesh. Understanding the distinction prevents over-claiming the
+network's capabilities when deploying or presenting this example.
+
+### What this example is NOT
+
+| Claim | Reality |
+| --- | --- |
+| "Self-healing mesh" | No. There is no alternate-path selection. If the relay between a sensor and the gateway fails, the sensor has no way to find a different relay. It fails until the original relay recovers or the sensor regains direct gateway range. |
+| "Multi-hop mesh" | Partially. Packets traverse at most one relay hop in the current implementation. A sensor cannot route through two relays in sequence. |
+| "Fault-tolerant" | Partially. The gateway is a single point of failure. If the gateway goes down, all nodes lose their destination. There is no backup gateway. |
+| "Mesh routing" | No. Nodes do not exchange routing tables, path metrics, or topology advertisements. Each node knows only its single cached next hop. |
+
+### Specific shortcomings
+
+1. **Single gateway, no failover** — all paths terminate at one gateway. A gateway reboot
+   is survivable (sensors and relays rediscover via beacon) but a gateway failure with
+   no recovery means the network is dark until the gateway is restored.
+
+2. **Single relay path, no alternate selection** — sensors cache one next-hop MAC. If
+   that relay fails, the sensor has no fallback (unless it can reach the gateway
+   directly). The dedup table prevents relay storms but does nothing to select a
+   better path.
+
+3. **One relay hop maximum** — the forwarding logic in the relay and sensor-relay roles
+   sends the packet directly to the gateway MAC. A relay never forwards to another
+   relay, so the network depth is capped at: sensor → relay → gateway.
+
+4. **No path quality metric** — during discovery, a sensor accepts the first beacon it
+   hears (gateway preferred, relay as fallback). It does not compare RSSI or hop
+   distance to choose a better relay when multiple relays are in range.
+
+5. **No topology advertisement** — relay beacons carry only a node type byte and
+   sequence number. Downstream nodes cannot determine distance-to-gateway or relay
+   load from beacon content alone.
+
+### How to extend toward a true self-healing mesh
+
+These extensions are not implemented but follow naturally from the existing architecture:
+
+| Extension | Approach |
+| --- | --- |
+| **Multiple relay candidates** | Store up to N relay MACs ranked by beacon RSSI. On primary relay failure, promote the next candidate without waiting for a full discovery window. |
+| **Relay-to-relay forwarding** | Add a "distance to gateway" field to relay beacons. A relay that receives a packet from another relay forwards it if its own distance is smaller. Prevents loops; enables depth > 1. |
+| **Backup gateway** | Broadcast beacon from two gateway nodes on the same channel. Sensors and relays cache both MACs and fail over when the primary stops beaconing. |
+| **Path quality selection** | During the discovery window, collect all relay beacons. After the window closes, select the relay with the strongest RSSI rather than the first heard. |
+| **Production mesh stack** | For deployments requiring true self-healing, replace this example with ESP-IDF's `ESP-WIFI-MESH` component, which implements automatic tree restructuring, multi-hop routing, and root failover natively. |
+
 ## Success Criteria
 
 - Gateway receives a packet from each sensor node on every 60-second wake cycle.

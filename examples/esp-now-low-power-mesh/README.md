@@ -345,6 +345,31 @@ I (60220) relay: >>> FWD node=0x8C  seq=4  hops=1
 > than a pure sensor. Choose sensor-relay when a node must both extend coverage and report
 > its own measurements from a battery-powered deployment.
 
+## Limitations
+
+This example implements a **tree topology with dynamic discovery and partial recovery**
+— not a self-healing mesh. The distinction matters if you are evaluating it for
+production deployment.
+
+### What this example is NOT
+
+| Claim | Reality |
+| --- | --- |
+| "Self-healing mesh" | No. If the relay between a sensor and the gateway fails, the sensor cannot find an alternate relay — it fails until the original recovers or it regains direct gateway range. |
+| "Multi-hop mesh" | Partially. Packets traverse at most **one relay hop**. A sensor cannot route through two relays in sequence. |
+| "Fault-tolerant" | Partially. The gateway is a single point of failure. A gateway reboot is survivable via rediscovery, but a permanent gateway failure takes down the entire network. |
+| "Mesh routing" | No. Nodes do not exchange routing tables or path metrics. Each node knows only its single cached next hop. |
+
+### How to extend toward a true self-healing mesh
+
+| Extension | Approach |
+| --- | --- |
+| **Multiple relay candidates** | Store up to N relay MACs ranked by beacon RSSI. On primary relay failure, promote the next candidate without waiting for a full discovery window. |
+| **Relay-to-relay forwarding** | Add a "distance to gateway" field to relay beacons. A relay forwards a packet only if its own distance is smaller, enabling depth > 1 without loops. |
+| **Backup gateway** | Run two gateway nodes on the same channel. Sensors and relays cache both MACs and fail over when the primary stops beaconing. |
+| **Path quality selection** | Collect all relay beacons during the discovery window; select the relay with the strongest RSSI rather than the first heard. |
+| **Production mesh stack** | For deployments requiring true self-healing, use ESP-IDF's `ESP-WIFI-MESH` component, which implements automatic tree restructuring, multi-hop routing, and root failover natively. |
+
 ## Testing
 
 Testing philosophy: automated first, manual only when hardware observation is unavoidable.

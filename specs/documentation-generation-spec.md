@@ -145,6 +145,35 @@ the README. Do not generate a placeholder.
 
 ---
 
+## Limitations Section Generation
+
+When `specs/FunctionalSpec.md` includes a "Limitations and Topology Characterization"
+section (or any section whose heading contains "Limitations"), the generated README.md
+**must** include a corresponding **Limitations** section.
+
+### Rules
+
+- **Position**: immediately after "Key Concepts" and before "Testing" (or before
+  "Spec Files" if Testing is absent).
+- **Content**: reproduce the shortcomings and extension guidance from FunctionalSpec.md
+  accurately. Never soften, omit, or reframe limitations to make the example appear
+  more capable than it is.
+- **Tone**: factual and constructive. State what the example does not do, then provide
+  a concrete path to the capability if the reader needs it.
+- **Tables**: preserve any "What this example is NOT" table and the extensions table
+  from the FunctionalSpec verbatim in structure; adapt prose as needed for README style.
+- **When absent**: if FunctionalSpec.md has no Limitations section, omit this section
+  from the README entirely — do not generate a placeholder.
+
+### Why this rule exists
+
+Over-claiming example capabilities (e.g. calling a tree topology with partial recovery
+a "self-healing mesh") misleads engineers evaluating the example for production use.
+Documented limitations give readers an accurate mental model and a clear upgrade path
+rather than discovering the gap at deployment time.
+
+---
+
 ## Per-Board Behavior Section Generation
 
 Every example README.md that supports more than one board must include a **Per-Board
