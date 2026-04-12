@@ -1,8 +1,10 @@
 # Breathing LED (Multi-Board)
 
 ## Overview
-Baseline SDD example. Demonstrates the full spec-to-firmware pipeline using the
-ESP-IDF LEDC driver to drive a smooth breathing effect on the onboard status LED.
+Baseline SDD example. Demonstrates the full spec-to-firmware pipeline. Drives a smooth
+breathing effect on the onboard status LED using either the ESP-IDF LEDC driver (hardware
+PWM, for simple GPIO LEDs) or the RMT peripheral (800 kHz NRZ protocol, for WS2812 RGB LEDs),
+selected at compile time via a Kconfig bool. Covers four boards across three manufacturers.
 
 ## Supported Boards
 - Adafruit HUZZAH32 (ESP32 Feather)

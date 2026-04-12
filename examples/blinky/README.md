@@ -6,9 +6,10 @@
 
 # Breathing LED — Multi-Board Demo (LEDC + WS2812)
 
-> **SDD baseline.** Demonstrates the full spec-to-firmware pipeline. Hardware PWM breathing on
-> simple GPIO LEDs (LEDC driver) and software brightness cycling on WS2812 RGB LEDs (RMT driver).
-> Four boards, zero external components.
+> **SDD baseline.** Demonstrates the full spec-to-firmware pipeline. Drives a smooth breathing
+> effect on the onboard status LED using either the ESP-IDF LEDC driver (hardware PWM, for simple
+> GPIO LEDs) or the RMT peripheral (800 kHz NRZ protocol, for WS2812 RGB LEDs), selected at
+> compile time via a Kconfig bool. Covers four boards across three manufacturers.
 
 ## Overview
 
@@ -56,7 +57,8 @@ idf.py build
 idf.py flash -p /dev/cu.usbserial-*   # adjust port to match your system
 ```
 
-Monitor in a separate terminal (idf.py monitor requires an interactive TTY):
+Monitor in a separate terminal (`idf.py monitor` requires an interactive TTY):
+
 ```sh
 idf.py monitor -p /dev/cu.usbserial-*
 ```
@@ -78,10 +80,10 @@ folder as your active workspace while developing this example.
 
 ## Multi-Manufacturer Same-Chip Handling
 
-Two boards can share the same ESP32 chip variant and therefore the same IDF target name
-(e.g. `esp32c6`). Because only one `sdkconfig.defaults.esp32c6` can exist, one board is
-designated **primary** and its settings are hardcoded in that file. Other boards of the same
-chip are **secondary** and need one extra step.
+Two boards from different manufacturers can share the same ESP32 chip variant and therefore
+the same IDF target name (e.g. `esp32c6`). Because only one `sdkconfig.defaults.esp32c6`
+can exist, one board is designated **primary** and its settings are hardcoded in that file.
+Other boards of the same chip are **secondary** and need one extra step.
 
 ### Primary boards (zero extra steps — `set-target` does everything)
 
@@ -90,7 +92,7 @@ chip are **secondary** and need one extra step.
 | `esp32` | Adafruit HUZZAH32 | Only esp32 board in this example |
 | `esp32s3` | Seeed XIAO ESP32S3 | Only esp32s3 board in this example |
 | `esp32c5` | Seeed XIAO ESP32-C5 | Only esp32c5 board in this example |
-| `esp32c6` | Espressif ESP32-C6-DevKitC-1-N8 | WS2812 LED requires distinct code path; documented here as primary |
+| `esp32c6` | Espressif ESP32-C6-DevKitC-1-N8 | WS2812 LED requires a distinct code path; documented as primary |
 
 ### Secondary boards (one menuconfig step required)
 
@@ -101,8 +103,8 @@ rm -f sdkconfig sdkconfig.old
 idf.py set-target esp32c6
 idf.py menuconfig
 # Navigate to: Blinky Configuration
-#   Set "LED is a WS2812B..." → disabled  (EXAMPLE_LED_WS2812=n)
-#   Set "LED GPIO number"     → 15         (EXAMPLE_LED_GPIO=15)
+#   "LED is a WS2812B..." → disabled   (EXAMPLE_LED_WS2812=n)
+#   "LED GPIO number"     → 15          (EXAMPLE_LED_GPIO=15)
 # Save and exit
 idf.py build && idf.py flash
 ```
@@ -110,10 +112,10 @@ idf.py build && idf.py flash
 ### General rule for adding a new board of an existing chip
 
 1. **Identify the differences** — LED type, GPIO, console peripheral (UART vs USB CDC vs USB Serial/JTAG).
-2. **Express each difference as a Kconfig symbol** — `bool` for type switches, `int` for GPIO and polarity values. Never add board-specific `#ifdef` in C source; all differences live in Kconfig.
+2. **Express each difference as a Kconfig symbol** — `bool` for type switches, `int` for GPIO and polarity. Never add board-specific `#ifdef` in C source; all differences live in Kconfig.
 3. **Decide which board is primary** — update `sdkconfig.defaults.<target>` for it.
 4. **Document secondary boards** — list them in `specs/FunctionalSpec.md` with their menuconfig overrides. The README is regenerated from that spec.
-5. **`rm -f sdkconfig sdkconfig.old` before every board switch** — `idf.py set-target` re-reads `sdkconfig.defaults.*` from scratch, but a stale `sdkconfig` on disk takes precedence and silently shadows the defaults. This is the single most common cause of "I updated the defaults but nothing changed."
+5. **`rm -f sdkconfig sdkconfig.old` before every board switch** — `idf.py set-target` re-reads `sdkconfig.defaults.*` from scratch, but a stale `sdkconfig` on disk takes precedence and silently shadows the defaults.
 
 > **Symptom of a stale sdkconfig:** bootloader output appears on the monitor but the application
 > is silent. This usually means the old sdkconfig still has `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y`
@@ -155,16 +157,16 @@ I (4328) blinky: Fade up → duty 0
 ## Key Concepts
 
 - **WS2812 via RMT**: `rmt_new_tx_channel` + `rmt_new_bytes_encoder` drives the 800 kHz NRZ
-  protocol on GPIO 8; GRB byte order; 10 MHz RMT resolution (1 tick = 100 ns); brightness capped
-  at 64/255 to protect eyes from bare-LED intensity
+  protocol; GRB byte order; 10 MHz RMT resolution (1 tick = 100 ns); brightness capped at
+  64/255 to protect eyes from bare-LED intensity
 - **LEDC fade callback**: `ledc_fade_func_install()` + IRAM-resident fade-done ISR — interrupt-
   driven fading eliminates CPU involvement during transitions
 - **`EXAMPLE_LED_WS2812` Kconfig bool**: compile-time code path selector — all board differences
   stay in `sdkconfig.defaults.<target>`, never in C source
 - **`#ifdef CONFIG_IDF_TARGET_ESP32`** selects `LEDC_HIGH_SPEED_MODE` vs `LEDC_LOW_SPEED_MODE` —
   a genuine SoC architectural difference, not a board choice
-- **Active-LOW polarity inversion**: XIAO boards require `DUTY_ON=0`, `DUTY_OFF=DUTY_MAX` — the
-  Kconfig `EXAMPLE_LED_ACTIVE_LEVEL` symbol drives this, irrelevant for the WS2812 path
+- **Active-LOW polarity inversion**: XIAO boards require `DUTY_ON=0`, `DUTY_OFF=DUTY_MAX` — driven
+  by `EXAMPLE_LED_ACTIVE_LEVEL`; irrelevant for the WS2812 path
 - **`ESP_DRAM_LOGI`** inside the IRAM-resident LEDC fade callback — `ESP_LOGI` is not flash-safe
   from ISR context
 - **`rm -f sdkconfig sdkconfig.old` discipline**: required before every board switch to force
@@ -189,8 +191,7 @@ Testing philosophy: automated first, manual only when hardware observation is un
 2. **T-A2 — Zero-Warning Build (XIAO ESP32S3)**
 
    ```sh
-   rm -f sdkconfig sdkconfig.old
-   idf.py set-target esp32s3
+   rm -f sdkconfig sdkconfig.old && idf.py set-target esp32s3
    idf.py build 2>&1 | grep -E "warning:|error:|ninja: build stopped"
    ```
 
@@ -199,8 +200,7 @@ Testing philosophy: automated first, manual only when hardware observation is un
 3. **T-A3 — Zero-Warning Build (ESP32-C6-DevKitC — WS2812 path)**
 
    ```sh
-   rm -f sdkconfig sdkconfig.old
-   idf.py set-target esp32c6
+   rm -f sdkconfig sdkconfig.old && idf.py set-target esp32c6
    idf.py build 2>&1 | grep -E "warning:|error:|ninja: build stopped"
    ```
 
@@ -208,10 +208,11 @@ Testing philosophy: automated first, manual only when hardware observation is un
 
 4. **T-A4 — sdkconfig Verification (DevKitC)**
 
-   After T-A3, confirm the WS2812 code path and correct GPIO were picked up:
+   Run immediately after T-A3 (reuses its sdkconfig). Guards against a stale sdkconfig
+   shadowing the updated `sdkconfig.defaults.esp32c6`.
 
    ```sh
-   grep -E "EXAMPLE_LED_WS2812|EXAMPLE_LED_GPIO|ESP_CONSOLE" sdkconfig
+   grep -E "EXAMPLE_LED_WS2812|EXAMPLE_LED_GPIO|ESP_CONSOLE_USB_SERIAL_JTAG" sdkconfig
    ```
 
    Pass: output contains `CONFIG_EXAMPLE_LED_WS2812=y`, `CONFIG_EXAMPLE_LED_GPIO=8`, and
@@ -225,26 +226,12 @@ Testing philosophy: automated first, manual only when hardware observation is un
 
    Pass: reported binary size < 1 MB.
 
-6. **T-A6 — Wokwi Simulation (HUZZAH32)**
-
-   Justification: provides hardware-level LEDC simulation without physical hardware; freely
-   available, single binary install, no account required for local use.
-
-   Prerequisites: [Install Wokwi CLI](https://docs.wokwi.com/wokwi-ci/getting-started);
-   `wokwi.toml` + `diagram.json` at the example root targeting the HUZZAH32.
-
-   ```sh
-   wokwi-cli --timeout 10000 --expect "Breathing period" .
-   ```
-
-   Pass: `Breathing period` appears in simulated serial output within 10 seconds.
-
 ### Manual Tests — hardware required
 
 **T-M1 — Visual LED Breathing Verification (HUZZAH32)**
 
-Why manual: smooth optical fade quality (no flicker, no visible duty-cycle steps) requires
-human perception. Wokwi confirms register writes but cannot certify perceptual smoothness.
+Why manual: smooth optical fade quality requires human perception; a build check confirms
+register writes but cannot certify perceptual smoothness.
 
 Hardware required: Adafruit HUZZAH32, USB Micro-B cable.
 
@@ -277,37 +264,38 @@ Pass: correct polarity, smooth breathing, correct serial log sequence.
 
 **T-M3 — Visual WS2812 Breathing Verification (ESP32-C6-DevKitC-1-N8)**
 
-Why manual: WS2812 breathing is a software loop — visual confirmation verifies that the RMT
-protocol is correctly timed and the LED responds (protocol errors produce no light or solid-on).
+Why manual: WS2812 breathing is a software RMT loop — protocol errors produce no light or
+solid-on, which build checks cannot detect.
 
-Hardware required: Espressif ESP32-C6-DevKitC-1-N8, USB-C cable connected to **left port** (UART bridge).
+Hardware required: Espressif ESP32-C6-DevKitC-1-N8, USB-C cable to **left port** (UART bridge,
+`/dev/cu.usbserial-*` on macOS).
 
 1. `rm -f sdkconfig sdkconfig.old && idf.py set-target esp32c6 && idf.py build`
 2. `idf.py flash -p /dev/cu.usbserial-*`
 3. In a terminal: `idf.py monitor -p /dev/cu.usbserial-*`
-4. Confirm serial output shows `WS2812 RMT channel init on GPIO 8` then `Starting WS2812 breathing loop`.
-5. Observe the onboard RGB LED.
-6. Confirm it breathes white (dim → bright → dim) with no stuck-on or stuck-off condition.
-7. Confirm breathing period is approximately 4 seconds per cycle.
+4. Confirm serial output: `WS2812 RMT channel init on GPIO 8` then `Starting WS2812 breathing loop`.
+5. Confirm the RGB LED breathes white (dim → bright → dim) with no stuck-on or stuck-off condition.
+6. Confirm breathing period is approximately 4 seconds per cycle.
 
-Pass: LED breathes white smoothly; serial log confirms init and loop start.
+Pass: LED breathes white smoothly; serial log confirms RMT init and loop start.
 
 ---
 
 **T-M4 — Secondary Board Override (Seeed XIAO ESP32-C6)**
 
-Why manual: verifies the menuconfig override path works correctly for secondary boards that
-share a chip target with the primary board.
+Why manual: verifies the menuconfig override path for secondary boards sharing a chip target.
+Cannot be automated without a two-board CI rig that also validates visual LED behaviour.
 
 Hardware required: Seeed XIAO ESP32-C6, USB-C cable.
 
 1. `rm -f sdkconfig sdkconfig.old && idf.py set-target esp32c6`
-2. `idf.py menuconfig` → Blinky Configuration → set `EXAMPLE_LED_WS2812=n`, `EXAMPLE_LED_GPIO=15`. Save and exit.
+2. `idf.py menuconfig` → **Blinky Configuration** → set `LED is a WS2812B...` to disabled,
+   `LED GPIO number` to 15. Save and exit.
 3. `idf.py build && idf.py flash`
-4. Confirm serial output shows LEDC init (`freq=5000 Hz`) not WS2812 init.
-5. Observe the onboard LED on GPIO 15 breathing smoothly.
+4. Confirm serial output shows LEDC init (`freq=5000 Hz`), not WS2812 init.
+5. Confirm the LED on GPIO 15 breathes smoothly.
 
-Pass: LEDC breathing on GPIO 15, no WS2812 init in logs.
+Pass: LEDC breathing on GPIO 15; no `WS2812 RMT` in serial log.
 
 ---
 
@@ -317,8 +305,8 @@ Why manual: requires physically reflashing two different boards and observing bo
 
 1. Flash HUZZAH32 (esp32 target) — confirm T-M1 passes.
 2. `rm -f sdkconfig sdkconfig.old && idf.py set-target esp32s3 && idf.py build flash`
-3. Confirm T-M2 passes on the XIAO.
-4. Switch back to HUZZAH32 — confirm T-M1 still passes.
+3. Confirm T-M2 passes on the XIAO ESP32S3.
+4. Switch back to HUZZAH32 and repeat — confirm T-M1 still passes.
 
 Pass: both boards pass their visual checks after each switch.
 
