@@ -24,6 +24,7 @@ A **Spec-Driven Development (SDD)** showcase for ESP32 / ESP-IDF. The strict rul
 | `esp32-ws2812-led-engineer` | Any example with a WS2812 RGB LED — generates RMT driver block, Kconfig symbol, CMakeLists dependency, and sdkconfig.defaults fragments; handles primary/secondary board pattern |
 | `esp32-deep-sleep-engineer` | Auto-invoked by full-project-generator when sleep is required; can also be run standalone |
 | `esp32-hardware-crypto-configurer` | Auto-invoked by full-project-generator when security is required; can also be run standalone |
+| `esp32-ansi-monitor-engineer` | Any example where serial monitor output should be a structured ANSI terminal dashboard — generates escape definitions, drawing functions, refresh timer wiring, and log-suppression discipline; supports Pattern A (continuous/scroll region) and Pattern B (per-cycle snapshot) |
 
 Skills are defined in `skills/*/SKILL.md`. Each SKILL.md contains its exact workflow — read it before invoking.
 

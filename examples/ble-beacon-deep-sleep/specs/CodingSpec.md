@@ -83,3 +83,72 @@ timer from button wakeup.
 ## File Layout (non-standard files)
 
 None beyond the standard layout.
+
+## Monitor Dashboard
+
+### Pattern choice: per-cycle snapshot
+
+This firmware is duty-cycled (10 s active + 10 s sleep). The correct ANSI pattern is
+**per-cycle snapshot** (cursor-home + overwrite). A scroll region (Pattern A from the
+`esp32-ansi-monitor-engineer` skill) is not appropriate: there is no continuous event stream to
+scroll, and the fixed-row layout rewrites itself cleanly on each 250 ms tick. The screen freezes
+during deep sleep — this is expected and provides a visible cue that the chip has entered sleep.
+
+### Dashboard layout
+
+Six fixed rows, redrawn every ~250 ms during the 10 s advertising window:
+
+```
+Row 1: title bar — "BLE BEACON MONITOR  ESP32-SDD" (bold, coloured background)
+Row 2: Cycle: #N    Wakeup: TIMER / BUTTON / FIRST_BOOT
+Row 3: BLE MAC: XX:XX:XX:XX:XX:XX  (shown as "—" until ble_sync_cb fires)
+Row 4: Status:  INITIALIZING / ADVERTISING / SLEEPING
+Row 5: Active:  [═══════════     ] 7.2 s remaining  (text progress bar, 20 chars wide)
+Row 6: separator line
+```
+
+Status field state machine:
+- `INITIALIZING` — from app_main entry until `ble_sync_cb` fires
+- `ADVERTISING` — from `ble_sync_cb` until `adv_timer_cb` fires and advertising stops
+- `SLEEPING` — drawn once after BLE teardown; chip enters deep sleep immediately after
+
+Progress bar in row 5: proportional to elapsed time in the 10 s advertising window.
+Computed from the difference between current `esp_timer_get_time()` and a start timestamp
+recorded when advertising begins. Freezes at full when status becomes `SLEEPING`.
+
+### Refresh architecture
+
+The main task must wake every ~250 ms to redraw during the advertising window. Two signals
+share the same wakeup path:
+- A new periodic 250 ms `esp_timer` posts a task notification each tick.
+- The existing `adv_timer_cb` (10 s advertising window expiry) additionally posts a task
+  notification and sets an atomic flag indicating advertising is complete.
+- The main task loops on `xTaskNotifyWait()` with a short timeout, redraws on each wakeup,
+  and exits the loop when the advertising-complete flag is set.
+
+Only the `app_main` task writes to the terminal. Timer callbacks and NimBLE callbacks must
+only set flags or call `xTaskNotifyGive()` — never call `esp_rom_printf` directly.
+
+### Output discipline
+
+All terminal output after the initial screen clear must use `esp_rom_printf()` exclusively
+(ROM UART, zero buffering; bypasses newlib stdio and the VFS layer entirely). Pre-format
+strings with `snprintf` into a local stack buffer, then output with `esp_rom_printf("%s", buf)`.
+Do not pass format specifiers directly to `esp_rom_printf` — ROM printf width and precision
+support is not guaranteed across all ESP-IDF builds.
+
+Call `esp_log_level_set("*", ESP_LOG_NONE)` immediately after clearing the screen and drawing
+the first frame. After that point, no ESP-IDF log output must appear. Errors must be reflected
+in the `Status` field of the dashboard rather than via `ESP_LOGE` calls.
+
+Include `esp_rom_sys.h` for `esp_rom_printf`. If the linker reports an undefined reference, add
+`esp_rom` explicitly to REQUIRES in `main/CMakeLists.txt`.
+
+### USB-native board note
+
+Boards with a native USB peripheral (XIAO ESP32S3, XIAO ESP32-C6, XIAO ESP32-C5) lose the
+serial port when the chip enters deep sleep. The dashboard will freeze on the `SLEEPING` frame
+and the terminal disconnects. This is expected behavior; the `SLEEPING` status and full progress
+bar are a deliberate last-frame indicator before the port disappears. Direct users in README and
+TestSpec to the Adafruit HUZZAH32 (CP2104 UART bridge) for multi-cycle serial observation —
+it keeps the port alive across sleep cycles.
