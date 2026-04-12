@@ -10,15 +10,47 @@ optimised for easy demonstration.
 
 ## Supported Boards
 
-| Target | Board | LED GPIO | Active Level | Button GPIO | Button Wakeup | Console |
-|---|---|---|---|---|---|---|
-| `esp32s3` | Seeed XIAO ESP32S3 | GPIO 21 | LOW | GPIO 0 (RTC_GPIO0) | ✓ ext1 | USB CDC |
-| `esp32c6` | Seeed XIAO ESP32-C6 | GPIO 15 | LOW | GPIO 9 | ✗ timer-only¹ | USB Serial/JTAG |
-| `esp32c5` | Seeed XIAO ESP32-C5 | GPIO 27 | LOW | GPIO 9 | ✗ timer-only¹ | USB Serial/JTAG |
-| `esp32` | Adafruit HUZZAH32 | GPIO 13 | HIGH | GPIO 0 (RTCIO_CH11) | ✓ ext0 | UART (CP2104) |
+| Target | Board | LED GPIO | LED Type | Button GPIO | Button Wakeup | Console | Role |
+|---|---|---|---|---|---|---|---|
+| `esp32` | Adafruit HUZZAH32 | GPIO 13 (active HIGH) | Simple GPIO | GPIO 0 (RTCIO_CH11) | ✓ ext0 | UART (CP2104) | sole |
+| `esp32s3` | YEJMKJ ESP32-S3-DevKitC-1-N16R8 | GPIO 48 | WS2812 RGB | — | ✗ timer-only² | USB Serial/JTAG | **primary** |
+| `esp32s3` | Seeed XIAO ESP32S3 | GPIO 21 (active LOW) | Simple GPIO | GPIO 0 (RTC_GPIO0) | ✓ ext1 | USB CDC | secondary |
+| `esp32c5` | Seeed XIAO ESP32-C5 | GPIO 27 (active LOW) | Simple GPIO | GPIO 9 | ✗ timer-only¹ | USB Serial/JTAG | sole |
+| `esp32c6` | Espressif ESP32-C6-DevKitC-1-N8 | GPIO 8 | WS2812 RGB | — | ✗ timer-only¹ | UART (CH343P) | **primary** |
+| `esp32c6` | Seeed XIAO ESP32-C6 | GPIO 15 (active LOW) | Simple GPIO | GPIO 9 | ✗ timer-only¹ | USB Serial/JTAG | secondary |
 
 ¹ GPIO 9 is the boot button on XIAO C6/C5, but it is not an RTC-capable GPIO on those targets
-(C6: only GPIO 0–7 are RTC-capable; C5: only GPIO 0–6). Timer-only wakeup is used on C6/C5.
+(C6: only GPIO 0–7 are RTC-capable; C5: only GPIO 0–6). Timer-only wakeup is used.
+
+² YEJMKJ DevKitC boot button GPIO is not RTC-capable on this variant. Timer-only wakeup is used.
+
+## Multi-Manufacturer Same-Chip Handling
+
+Two boards share the `esp32s3` target and two share the `esp32c6` target. The WS2812 board is
+**primary** for each target — its configuration is baked into `sdkconfig.defaults.<target>`. The
+simple GPIO board is **secondary** and requires a one-time menuconfig step after `idf.py set-target`.
+
+For XIAO ESP32S3 (secondary on esp32s3):
+```sh
+idf.py set-target esp32s3
+idf.py menuconfig
+```
+In `BLE Beacon Configuration`, set:
+- `Use WS2812 RGB LED` → **Disabled**
+- `LED GPIO number` → **21**
+- `LED active level` → **0** (active LOW)
+
+Also in `Component config → ESP System Settings → Channel for console output` → **USB CDC**.
+
+For XIAO ESP32-C6 (secondary on esp32c6):
+```sh
+idf.py set-target esp32c6
+idf.py menuconfig
+```
+In `BLE Beacon Configuration`, set:
+- `Use WS2812 RGB LED` → **Disabled**
+- `LED GPIO number` → **15**
+- `LED active level` → **0** (active LOW)
 
 ## Requirements
 
@@ -33,7 +65,7 @@ optimised for easy demonstration.
   - Total ADV PDU must remain ≤ 31 bytes.
 - Stop advertising after 10 s advertising window, then return to deep sleep immediately.
 - Increment `RTC_DATA_ATTR uint16_t boot_count` and `RTC_DATA_ATTR uint16_t sequence` on every wake.
-- Light the onboard LED while the beacon is broadcasting, turn it off before entering deep sleep (GPIO and active level are board-specific).
+- Turn the LED **on when BLE advertising is active** (immediately after `ble_gap_adv_start()` succeeds) and **off when advertising stops** (immediately after `ble_gap_adv_stop()` in the advertising-complete path). The LED must remain dark during the BLE initialisation phase and during teardown. For **WS2812 RGB LED boards** (YEJMKJ DevKitC, ESP32-C6-DevKitC-1-N8): use solid blue at 64/255 brightness — blue is the convention for BLE activity. For **simple GPIO boards**: use the board's active level. LED GPIO and polarity are board-specific.
 - On every wake cycle, after NimBLE host sync, log the device BLE MAC address in the format
   `BLE MAC: XX:XX:XX:XX:XX:XX` so the user can find the device by MAC in a scanner app.
 - Log advertisement payload and wakeup cause over serial on every cycle.
@@ -43,10 +75,12 @@ optimised for easy demonstration.
 
 ## Hardware Dependencies
 
-- board-specs/seeed/xiao-esp32s3.md — ESP32-S3, LED GPIO 21 active-LOW, GPIO 0 boot button (RTC_GPIO0)
-- board-specs/seeed/xiao-esp32c6.md — ESP32-C6, LED GPIO 15 active-LOW, GPIO 9 boot button (not RTC-capable)
-- board-specs/seeed/xiao-esp32c5.md — ESP32-C5, LED GPIO 27 active-LOW, GPIO 9 boot button (not RTC-capable)
 - board-specs/adafruit/huzzah32.md — ESP32, LED GPIO 13 active-HIGH, GPIO 0 boot button (RTCIO_CH11)
+- board-specs/yejmkj/esp32-s3-devkitc-1-n16r8.md — ESP32-S3, WS2812 RGB LED GPIO 48, USB Serial/JTAG
+- board-specs/seeed/xiao-esp32s3.md — ESP32-S3, LED GPIO 21 active-LOW, GPIO 0 boot button (RTC_GPIO0)
+- board-specs/seeed/xiao-esp32c5.md — ESP32-C5, LED GPIO 27 active-LOW, GPIO 9 boot button (not RTC-capable)
+- board-specs/espressif/esp32-c6-devkitc-1-n8.md — ESP32-C6, WS2812 RGB LED GPIO 8, UART bridge (CH343P)
+- board-specs/seeed/xiao-esp32c6.md — ESP32-C6, LED GPIO 15 active-LOW, GPIO 9 boot button (not RTC-capable)
 
 ## Power Budget
 
@@ -62,7 +96,7 @@ optimised for easy demonstration.
 - Device appears as **`"ESP32-SDD"`** in scanner app device lists without requiring any MAC filter.
 - Manufacturer data in the packet matches expected `boot_count` and `sequence` values.
 - Serial log on every cycle includes the BLE MAC address (`BLE MAC: XX:XX:XX:XX:XX:XX`).
-- Active window does not exceed 12 s (LED on, advertise, stop, LED off, sleep).
+- Active window does not exceed 12 s. LED is dark during init and teardown phases.
 - On boards with RTC-capable boot button (ESP32-S3, ESP32): button press wakes device and triggers
   an advertisement within 500 ms.
 - No BLE stack crashes or watchdog triggers across 20+ consecutive cycles.

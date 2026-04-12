@@ -7,5 +7,5 @@
 idf_component_register(
     SRCS "main.c"
     INCLUDE_DIRS "."
-    REQUIRES bt driver esp_timer esp_system nvs_flash esp_rom
+    REQUIRES bt driver esp_timer esp_system nvs_flash esp_rom esp_driver_rmt
 )

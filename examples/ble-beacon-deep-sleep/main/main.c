@@ -5,32 +5,30 @@
    ================================================ */
 
 /*
- * BLE Beacon + Deep Sleep — multi-board (ESP32S3, ESP32C6, ESP32C5, ESP32)
+ * BLE Beacon + Deep Sleep — multi-board (ESP32, ESP32-S3, ESP32-C5, ESP32-C6)
  *
- * Stack choice: NimBLE (not Bluedroid). NimBLE initialises in ~50 ms vs ~200 ms
- * for Bluedroid, uses ~30 KB RAM vs ~60 KB, and provides a clean synchronous
- * nimble_port_stop() teardown path — all critical for a duty-cycled beacon
- * followed by immediate deep sleep.
- *
- * Cycle per wake:
- *   1. gpio_hold_dis -> determine wakeup cause -> increment RTC counters
- *   2. LED on -> NVS init -> BLE stack init -> start NimBLE host task
- *   3. Draw initial ANSI dashboard; suppress ESP-IDF logs
- *   4. sync_cb fires -> copy BLE MAC -> start non-connectable advertising
- *   5. 10 s esp_timer fires -> adv stop -> set s_adv_done flag
- *   6. app_main polling loop exits -> full BLE teardown -> LED off -> gpio_hold_en
- *   7. Configure sleep sources (10 s timer + GPIO button on S3/ESP32) -> esp_deep_sleep_start
+ * Two LED code paths, selected at compile time by CONFIG_EXAMPLE_LED_WS2812:
+ *   WS2812 path (YEJMKJ DevKitC GPIO 48, ESP32-C6-DevKitC GPIO 8):
+ *     Solid blue (0, 0, 64) while BLE advertising is active; dark otherwise.
+ *   GPIO path (HUZZAH32 GPIO 13, XIAO variants):
+ *     Active level while advertising; inactive at all other times.
+ *   In both paths the LED is dark during NimBLE init and teardown phases —
+ *   it indicates actual BLE TX activity, not the overall active window.
  *
  * Dashboard: per-cycle snapshot pattern (cursor-home + overwrite every 250 ms).
  * See CodingSpec.md ## Monitor Dashboard and the esp32-ansi-monitor-engineer skill.
  *
- * BLE teardown sequence (3 calls — see shared-specs/ble-patterns.md):
- *   ble_gap_adv_stop() -> nimble_port_stop() -> nimble_port_deinit()
- *   nimble_port_deinit() handles controller disable/deinit internally on ESP-IDF 5.5.x.
- *   Do NOT call esp_bt_controller_disable/deinit explicitly — causes double-deinit crash.
+ * Cycle per wake:
+ *   1. gpio_hold_dis -> determine wakeup cause -> increment RTC counters
+ *   2. led_init (hardware only; LED stays dark) -> NVS init -> NimBLE init
+ *   3. Draw initial ANSI dashboard; suppress ESP-IDF logs
+ *   4. sync_cb fires -> copy BLE MAC -> led_adv_on -> start advertising
+ *   5. 10 s adv_timer fires -> ble_gap_adv_stop -> led_adv_off -> set done flag
+ *   6. Polling loop exits -> teardown -> gpio_hold_en (GPIO path) -> deep sleep
  *
- * Board-specific configuration is resolved at compile time via Kconfig symbols
- * set in sdkconfig.defaults.<target>. Use `idf.py set-target <target>` to select.
+ * BLE teardown: ble_gap_adv_stop() -> nimble_port_stop() -> nimble_port_deinit()
+ * nimble_port_deinit() handles controller disable/deinit internally (ESP-IDF 5.5.x).
+ * Do NOT call esp_bt_controller_disable/deinit explicitly — double-deinit crash.
  */
 
 #include <stdint.h>
@@ -50,6 +48,11 @@
 
 #include "driver/gpio.h"
 
+#if CONFIG_EXAMPLE_LED_WS2812
+#include "driver/rmt_tx.h"
+#include "driver/rmt_encoder.h"
+#endif
+
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "host/ble_hs.h"
@@ -57,12 +60,11 @@
 
 /* -----------------------------------------------------------------------
  * Pin assignments — resolved from sdkconfig.defaults.<target> via Kconfig.
- * Values set in main/Kconfig.projbuild; overridden per target.
  * ----------------------------------------------------------------------- */
-#define LED_GPIO        CONFIG_EXAMPLE_LED_GPIO
-#define LED_ON          (CONFIG_EXAMPLE_LED_ACTIVE_LEVEL)
-#define LED_OFF         (1 - CONFIG_EXAMPLE_LED_ACTIVE_LEVEL)
-#define BUTTON_GPIO     CONFIG_EXAMPLE_BUTTON_GPIO
+#define LED_GPIO    CONFIG_EXAMPLE_LED_GPIO
+#define LED_ON      (CONFIG_EXAMPLE_LED_ACTIVE_LEVEL)
+#define LED_OFF     (1 - CONFIG_EXAMPLE_LED_ACTIVE_LEVEL)
+#define BUTTON_GPIO CONFIG_EXAMPLE_BUTTON_GPIO
 
 /* -----------------------------------------------------------------------
  * Timing
@@ -80,29 +82,105 @@ static const char *TAG = "ble_beacon";
 static RTC_DATA_ATTR uint16_t boot_count = 0;
 static RTC_DATA_ATTR uint16_t sequence   = 0;
 
+/* ================================================================
+   WS2812 RMT path — compiled when CONFIG_EXAMPLE_LED_WS2812=y
+   Generated per esp32-ws2812-led-engineer skill workflow.
+   LED colour = solid blue (0, 0, 64) during BLE advertising.
+   64/255 is the minimum brightness floor per AIGenLessonsLearned.md.
+   ================================================================ */
+#if CONFIG_EXAMPLE_LED_WS2812
+
+#define WS2812_RMT_RESOLUTION_HZ  (10 * 1000 * 1000)  /* 10 MHz → 1 tick = 100 ns */
+#define WS2812_T0H_TICKS  3   /* 300 ns high for a 0-bit */
+#define WS2812_T0L_TICKS  9   /* 900 ns low  for a 0-bit */
+#define WS2812_T1H_TICKS  9   /* 900 ns high for a 1-bit */
+#define WS2812_T1L_TICKS  3   /* 300 ns low  for a 1-bit */
+
+static rmt_channel_handle_t s_rmt_chan;
+static rmt_encoder_handle_t s_bytes_enc;
+static const rmt_transmit_config_t s_tx_cfg = {
+    .loop_count      = 0,
+    .flags.eot_level = 0,  /* hold line LOW after frame — WS2812 reset condition */
+};
+
+static void ws2812_write(uint8_t r, uint8_t g, uint8_t b)
+{
+    uint8_t grb[3] = {g, r, b};  /* WS2812B expects GRB byte order, not RGB */
+    rmt_transmit(s_rmt_chan, s_bytes_enc, grb, sizeof(grb), &s_tx_cfg);
+    rmt_tx_wait_all_done(s_rmt_chan, pdMS_TO_TICKS(100));
+}
+
+static void led_init(void)
+{
+    gpio_hold_dis(LED_GPIO);  /* release any hold set by the previous sleep cycle */
+
+    rmt_tx_channel_config_t tx_cfg = {
+        .gpio_num          = LED_GPIO,
+        .clk_src           = RMT_CLK_SRC_DEFAULT,
+        .resolution_hz     = WS2812_RMT_RESOLUTION_HZ,
+        .mem_block_symbols = 64,
+        .trans_queue_depth = 4,
+    };
+    ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_cfg, &s_rmt_chan));
+
+    rmt_bytes_encoder_config_t enc_cfg = {
+        .bit0 = { .level0 = 1, .duration0 = WS2812_T0H_TICKS,
+                  .level1 = 0, .duration1 = WS2812_T0L_TICKS },
+        .bit1 = { .level0 = 1, .duration0 = WS2812_T1H_TICKS,
+                  .level1 = 0, .duration1 = WS2812_T1L_TICKS },
+        .flags.msb_first = 1,
+    };
+    ESP_ERROR_CHECK(rmt_new_bytes_encoder(&enc_cfg, &s_bytes_enc));
+    ESP_ERROR_CHECK(rmt_enable(s_rmt_chan));
+
+    ws2812_write(0, 0, 0);  /* ensure LED starts dark regardless of prior state */
+    ESP_LOGI(TAG, "WS2812 RMT init on GPIO %d (10 MHz, GRB order)", LED_GPIO);
+}
+
+/* Blue (0, 0, 64) — BLE advertising active. 64/255 is the minimum visible floor. */
+static void led_adv_on(void)  { ws2812_write(0, 0, 64); }
+static void led_adv_off(void) { ws2812_write(0, 0, 0);  }
+/* RMT eot_level=0 holds data line LOW after each frame — gpio_hold_en() not needed. */
+
+/* ================================================================
+   Simple GPIO path — compiled when CONFIG_EXAMPLE_LED_WS2812=n
+   ================================================================ */
+#else
+
+static void led_init(void)
+{
+    gpio_hold_dis(LED_GPIO);  /* release any hold set by the previous sleep cycle */
+
+    const gpio_config_t io_cfg = {
+        .pin_bit_mask = (1ULL << LED_GPIO),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&io_cfg));
+    gpio_set_level(LED_GPIO, LED_OFF);  /* inactive = LED off; stays dark during BLE init */
+}
+
+static void led_adv_on(void)  { gpio_set_level(LED_GPIO, LED_ON);  }
+static void led_adv_off(void) { gpio_set_level(LED_GPIO, LED_OFF); }
+/* gpio_hold_en() called in app_main just before deep sleep — not here,
+ * because the device may still be active for some time after advertising stops. */
+
+#endif  /* CONFIG_EXAMPLE_LED_WS2812 */
+
 /* -----------------------------------------------------------------------
- * ANSI escape sequences
- *
+ * ANSI escape sequences — per-cycle snapshot pattern (Pattern B)
  * All post-init terminal output goes through esp_rom_printf(), which writes
- * directly to the UART ROM routine — bypassing newlib stdio and the VFS
- * layer entirely, guaranteeing every byte appears immediately with zero
- * buffering. Pre-format with snprintf into a stack buffer first, then emit
- * with esp_rom_printf("%s", buf) to avoid relying on ROM printf specifier
- * support (width/precision may be absent in some ESP-IDF ROM builds).
- *
- * Pattern B (per-cycle snapshot): cursor-home + overwrite every 250 ms.
- * No DECSTBM scroll region needed — the 6-row layout rewrites itself cleanly.
- * ANSI_SAVE/ANSI_RESTORE and ANSI_SCROLL_LOCK are Pattern A only (omitted).
+ * directly to the UART ROM routine — bypassing newlib stdio and VFS entirely.
+ * Pre-format with snprintf into a stack buffer; emit with esp_rom_printf("%s", buf).
  * ----------------------------------------------------------------------- */
 #define ESC             "\033"
+#define ANSI_HOME       ESC "[H"
+#define ANSI_CLEAR      ESC "[2J" ESC "[H"
+#define ANSI_ERASE_EOL  ESC "[K"
+#define ANSI_CURSOR_OFF ESC "[?25l"
 
-/* Cursor / screen */
-#define ANSI_HOME       ESC "[H"            /* cursor to row 1, col 1 */
-#define ANSI_CLEAR      ESC "[2J" ESC "[H"  /* clear screen + home (once on init) */
-#define ANSI_ERASE_EOL  ESC "[K"            /* erase from cursor to end of line */
-#define ANSI_CURSOR_OFF ESC "[?25l"         /* DECTCEM — hide cursor */
-
-/* Colour / style */
 #define C_RESET  ESC "[0m"
 #define C_BOLD   ESC "[1m"
 #define C_DIM    ESC "[2m"
@@ -124,16 +202,16 @@ typedef enum {
     ADV_STATUS_SLEEPING    = 2,
 } adv_status_t;
 
-static volatile adv_status_t s_adv_status     = ADV_STATUS_INIT;
-static volatile bool         s_adv_done        = false;
-static uint8_t               s_ble_mac[6]      = {0};   /* NimBLE little-endian order */
-static bool                  s_ble_mac_valid    = false;
-static int64_t               s_cycle_start_us   = 0;    /* set when advertising begins */
-static const char           *s_cause_str        = "FIRST_BOOT";
-static TaskHandle_t          s_main_task_handle = NULL;
+static volatile adv_status_t s_adv_status      = ADV_STATUS_INIT;
+static volatile bool         s_adv_done         = false;
+static uint8_t               s_ble_mac[6]       = {0};
+static bool                  s_ble_mac_valid     = false;
+static int64_t               s_cycle_start_us    = 0;
+static const char           *s_cause_str         = "FIRST_BOOT";
+static TaskHandle_t          s_main_task_handle  = NULL;
 
 /* -----------------------------------------------------------------------
- * Module-scope handles — created fresh each wake cycle
+ * Module-scope timer handles — created fresh each wake cycle
  * ----------------------------------------------------------------------- */
 static esp_timer_handle_t s_adv_timer;
 static esp_timer_handle_t s_refresh_timer;
@@ -154,30 +232,17 @@ static void draw_dashboard(bool initial);
 /* -----------------------------------------------------------------------
  * draw_dashboard — per-cycle snapshot pattern (Pattern B)
  *
- * Called every 250 ms by the polling loop and once with initial=true after
- * the NimBLE host task starts. Only called from the app_main task.
- *
- * Layout (6 rows, cursor-home + overwrite; no scroll region):
- *   Row 1: title bar
- *   Row 2: cycle number and wakeup cause
- *   Row 3: BLE MAC address
- *   Row 4: advertising status
- *   Row 5: active window progress bar
- *   Row 6: separator
+ * Called every ~250 ms during the advertising window and once with
+ * initial=true after NimBLE starts. Only called from the app_main task.
  * ----------------------------------------------------------------------- */
 static void draw_dashboard(bool initial)
 {
     if (initial) {
-        /* Clear screen once to remove ESP-IDF startup log spam.
-         * All subsequent redraws use ANSI_HOME + overwrite to avoid flicker. */
         esp_rom_printf(ANSI_CLEAR ANSI_CURSOR_OFF);
-
-        /* Suppress all ESP-IDF log output permanently. From this point, errors
-         * and status must be shown via the Status field in the dashboard. */
         esp_log_level_set("*", ESP_LOG_NONE);
     }
 
-    /* --- Compute progress bar --- */
+    /* --- Progress bar --- */
     int filled = 0;
     float remain_s = 10.0f;
     if (s_cycle_start_us > 0) {
@@ -194,11 +259,9 @@ static void draw_dashboard(bool initial)
         remain_s = 0.0f;
     }
 
-    char bar[DASH_BAR_WIDTH + 3];  /* '[' + fill + ']' + NUL */
+    char bar[DASH_BAR_WIDTH + 3];
     bar[0] = '[';
-    for (int i = 0; i < DASH_BAR_WIDTH; i++) {
-        bar[i + 1] = (i < filled) ? '=' : ' ';
-    }
+    for (int i = 0; i < DASH_BAR_WIDTH; i++) bar[i + 1] = (i < filled) ? '=' : ' ';
     bar[DASH_BAR_WIDTH + 1] = ']';
     bar[DASH_BAR_WIDTH + 2] = '\0';
 
@@ -206,20 +269,15 @@ static void draw_dashboard(bool initial)
     const char *status_str;
     const char *status_col;
     switch (s_adv_status) {
-        case ADV_STATUS_INIT:
-            status_str = "INITIALIZING"; status_col = C_YELLOW; break;
-        case ADV_STATUS_ADVERTISING:
-            status_str = "ADVERTISING";  status_col = C_GREEN;  break;
-        case ADV_STATUS_SLEEPING:
-            status_str = "SLEEPING";     status_col = C_GRAY;   break;
-        default:
-            status_str = "UNKNOWN";      status_col = C_RED;    break;
+        case ADV_STATUS_INIT:        status_str = "INITIALIZING"; status_col = C_YELLOW; break;
+        case ADV_STATUS_ADVERTISING: status_str = "ADVERTISING";  status_col = C_GREEN;  break;
+        case ADV_STATUS_SLEEPING:    status_str = "SLEEPING";     status_col = C_GRAY;   break;
+        default:                     status_str = "UNKNOWN";      status_col = C_RED;    break;
     }
 
-    /* --- MAC string — "—" until ble_sync_cb populates s_ble_mac --- */
+    /* --- MAC string --- */
     char mac_str[20];
     if (s_ble_mac_valid) {
-        /* NimBLE stores addresses little-endian; display MSB-first for readability */
         snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
                  s_ble_mac[5], s_ble_mac[4], s_ble_mac[3],
                  s_ble_mac[2], s_ble_mac[1], s_ble_mac[0]);
@@ -227,57 +285,48 @@ static void draw_dashboard(bool initial)
         snprintf(mac_str, sizeof(mac_str), "--:--:--:--:--:--");
     }
 
-    /* --- Row 1: title bar --- */
+    /* Row 1 — title bar */
     char row1[100];
     snprintf(row1, sizeof(row1),
              "  BLE BEACON MONITOR   ESP32-SDD   cycle #%u  ",
              (unsigned)boot_count);
     esp_rom_printf(ANSI_HOME C_BGBLU C_BOLD C_WHITE "%s" C_RESET ANSI_ERASE_EOL "\n", row1);
 
-    /* --- Row 2: cycle and wakeup cause --- */
+    /* Row 2 — cycle and wakeup cause */
     char row2[100];
     snprintf(row2, sizeof(row2),
              "  Cycle: " C_BOLD "#%-4u" C_RESET "   Wakeup: " C_CYAN "%s" C_RESET,
              (unsigned)boot_count, s_cause_str);
     esp_rom_printf("%s" ANSI_ERASE_EOL "\n", row2);
 
-    /* --- Row 3: BLE MAC --- */
+    /* Row 3 — BLE MAC */
     char row3[100];
-    snprintf(row3, sizeof(row3),
-             "  BLE MAC: " C_BOLD "%s" C_RESET,
-             mac_str);
+    snprintf(row3, sizeof(row3), "  BLE MAC: " C_BOLD "%s" C_RESET, mac_str);
     esp_rom_printf("%s" ANSI_ERASE_EOL "\n", row3);
 
-    /* --- Row 4: advertising status --- */
+    /* Row 4 — advertising status */
     char row4[100];
-    snprintf(row4, sizeof(row4),
-             "  Status:  %s%s" C_RESET,
-             status_col, status_str);
+    snprintf(row4, sizeof(row4), "  Status:  %s%s" C_RESET, status_col, status_str);
     esp_rom_printf("%s" ANSI_ERASE_EOL "\n", row4);
 
-    /* --- Row 5: progress bar --- */
+    /* Row 5 — progress bar */
     char row5[100];
     snprintf(row5, sizeof(row5),
              "  Active:  " C_CYAN "%s" C_RESET "  %.1f s remaining",
              bar, (double)remain_s);
     esp_rom_printf("%s" ANSI_ERASE_EOL "\n", row5);
 
-    /* --- Row 6: separator --- */
+    /* Row 6 — separator */
     esp_rom_printf(C_GRAY
                    "  ------------------------------------------------" C_RESET
                    ANSI_ERASE_EOL "\n");
 }
 
 /* -----------------------------------------------------------------------
- * Advertising
+ * Advertising payload
  *
- * Payload layout (26 bytes total — within the 31-byte PDU limit):
- *   [0x02 0x01 0x06]                     — Flags AD (3 bytes)
- *   [0x0A 0x09 "ESP32-SDD"]              — Complete Local Name AD (11 bytes)
- *   [0x0B 0xFF]                           — Mfr data AD header (2 bytes)
- *   [0xFF 0xFF]                           — Company ID 0xFFFF (2 bytes LE)
- *   [boot_lo boot_hi seq_lo seq_hi]       — boot_count + sequence (4 bytes LE)
- *   [0xDE 0xAD 0xBE 0xEF]                — Magic identifier (4 bytes)
+ * Layout (26 bytes total — within the 31-byte PDU limit):
+ *   Flags (3) + Complete Local Name "ESP32-SDD" (11) + Mfr data (12) = 26 bytes
  * ----------------------------------------------------------------------- */
 static void start_advertising(void)
 {
@@ -303,7 +352,6 @@ static void start_advertising(void)
 
     int rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0) {
-        /* Reflect failure in Status field; signal main task to proceed to sleep */
         s_adv_status = ADV_STATUS_SLEEPING;
         s_adv_done   = true;
         xTaskNotifyGive(s_main_task_handle);
@@ -324,30 +372,32 @@ static void start_advertising(void)
         xTaskNotifyGive(s_main_task_handle);
         return;
     }
+
+    /* Advertising is now active — turn on the LED to indicate BLE TX */
+    led_adv_on();
 }
 
 /* Called by NimBLE host task when host and controller are synchronised.
- * Read MAC address, update dashboard state, start advertising. */
+ * Reads MAC, updates dashboard state, then starts advertising (and LED). */
 static void ble_sync_cb(void)
 {
     uint8_t addr_val[6] = {0};
-    int rc = ble_hs_id_copy_addr(BLE_ADDR_PUBLIC, addr_val, NULL);
-    if (rc == 0) {
+    if (ble_hs_id_copy_addr(BLE_ADDR_PUBLIC, addr_val, NULL) == 0) {
         memcpy(s_ble_mac, addr_val, 6);
         s_ble_mac_valid = true;
     }
 
-    /* Transition to ADVERTISING status; dashboard will show on next refresh tick */
     s_adv_status = ADV_STATUS_ADVERTISING;
-    xTaskNotifyGive(s_main_task_handle);   /* trigger immediate redraw */
+    xTaskNotifyGive(s_main_task_handle);   /* trigger immediate dashboard redraw */
 
     start_advertising();
 }
 
-/* Called if the NimBLE host resets unexpectedly. Signal main task to proceed to sleep. */
+/* Called if the NimBLE host resets unexpectedly. Turn off LED and signal done. */
 static void ble_reset_cb(int reason)
 {
     (void)reason;
+    led_adv_off();   /* LED may be on if reset fired after advertising started */
     s_adv_status = ADV_STATUS_SLEEPING;
     s_adv_done   = true;
     xTaskNotifyGive(s_main_task_handle);
@@ -362,22 +412,20 @@ static void ble_host_task(void *param)
 }
 
 /* -----------------------------------------------------------------------
- * Advertising window timer callback — fires after 10 s advertising window
- *
- * Sets the advertising-complete flag and wakes the main task.
- * The main task's polling loop will draw a final SLEEPING frame and proceed.
+ * Advertising window timer — fires after 10 s
+ * Stops advertising, turns off LED, sets done flag.
  * ----------------------------------------------------------------------- */
 static void adv_timer_cb(void *arg)
 {
     (void)arg;
     ble_gap_adv_stop();
+    led_adv_off();   /* turn off LED immediately when advertising stops */
     s_adv_status = ADV_STATUS_SLEEPING;
     s_adv_done   = true;
     xTaskNotifyGive(s_main_task_handle);
 }
 
-/* Dashboard refresh timer callback — fires every 250 ms.
- * Only wakes the main task; all drawing is done on the main task. */
+/* Dashboard 250 ms refresh timer — wakes main task only; no LED or screen writes here. */
 static void refresh_timer_cb(void *arg)
 {
     (void)arg;
@@ -385,38 +433,32 @@ static void refresh_timer_cb(void *arg)
 }
 
 /* -----------------------------------------------------------------------
- * BLE stack teardown — MUST complete before esp_deep_sleep_start()
+ * BLE stack teardown
  *
- * 3-step sequence:
- *   1. ble_gap_adv_stop()  — idempotent; safe if already stopped by timer
- *   2. nimble_port_stop()  — signals host task to exit; blocks until done
- *   3. nimble_port_deinit() — frees NimBLE resources + controller disable/deinit
+ * 3-step sequence required before deep sleep:
+ *   ble_gap_adv_stop()   — idempotent (advertising already stopped by timer)
+ *   nimble_port_stop()   — signals host task to exit; blocks until done
+ *   nimble_port_deinit() — frees NimBLE + handles controller disable/deinit
  *
- * In ESP-IDF 5.5.x, nimble_port_deinit() internally handles
+ * In ESP-IDF 5.5.x, nimble_port_deinit() internally calls
  * esp_bt_controller_disable() and esp_bt_controller_deinit().
  * Do NOT call those APIs explicitly — causes double-deinit crash.
  * ----------------------------------------------------------------------- */
 static void ble_stack_teardown(void)
 {
-    ble_gap_adv_stop();   /* idempotent — safe if already stopped */
-
-    int rc = nimble_port_stop();
-    if (rc != 0) {
-        /* Log is suppressed — nothing to do here; teardown continues */
-        (void)rc;
-    }
-
+    ble_gap_adv_stop();   /* idempotent — advertising already stopped by timer */
+    nimble_port_stop();   /* blocks until host task exits */
     nimble_port_deinit();
 }
 
 /* -----------------------------------------------------------------------
  * Deep sleep wakeup source configuration
  *
- * Original ESP32 supports ext0 (single GPIO). RTC GPIOs: 0,2,4,12-15,25-27,32-39.
- * ESP32-S3: use ext1; GPIO 0-21 are all RTC-capable.
- * ESP32-C6: only GPIO 0-7 are RTC GPIOs. Boot button (GPIO 9) is NOT RTC-capable.
- * ESP32-C5: only GPIO 0-6 are RTC GPIOs. Boot button (GPIO 9) is NOT RTC-capable.
- * C6/C5 fall back to timer-only wakeup — no external hardware required.
+ * ESP32-S3: GPIO 0–21 all RTC-capable → ext1 button wakeup on GPIO 0.
+ * ESP32 (original): GPIO 0 is RTC-capable (RTCIO_CH11) → ext0 button wakeup.
+ * ESP32-C6: only GPIO 0–7 are RTC-capable. Boot button is GPIO 9 → not RTC.
+ * ESP32-C5: only GPIO 0–6 are RTC-capable. Boot button is GPIO 9 → not RTC.
+ * YEJMKJ DevKitC: boot button GPIO not RTC-capable on this variant → timer-only.
  * ----------------------------------------------------------------------- */
 static void configure_sleep(void)
 {
@@ -431,8 +473,8 @@ static void configure_sleep(void)
     gpio_pulldown_dis(BUTTON_GPIO);
     ESP_ERROR_CHECK(esp_sleep_enable_ext1_wakeup(1ULL << BUTTON_GPIO, ESP_EXT1_WAKEUP_ANY_LOW));
 #else
-    /* C6/C5: boot button GPIO 9 is not RTC-capable — timer-only wakeup */
     (void)BUTTON_GPIO;
+    /* C6/C5 and YEJMKJ DevKitC: timer-only wakeup */
 #endif
 }
 
@@ -441,33 +483,22 @@ static void configure_sleep(void)
  * ----------------------------------------------------------------------- */
 void app_main(void)
 {
-    /* Store main task handle immediately — callbacks may fire before we set it later */
+    /* Store main task handle first — callbacks may reference it before we continue */
     s_main_task_handle = xTaskGetCurrentTaskHandle();
 
     esp_task_wdt_add(NULL);
     esp_task_wdt_reset();
 
-    /* Release GPIO hold from previous sleep cycle before driving any pin */
-    gpio_hold_dis(LED_GPIO);
-
     /* ---- Wakeup cause ---- */
     esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
     switch (cause) {
-        case ESP_SLEEP_WAKEUP_TIMER:
-            s_cause_str = "TIMER";
-            break;
+        case ESP_SLEEP_WAKEUP_TIMER: s_cause_str = "TIMER";          break;
 #if CONFIG_IDF_TARGET_ESP32
-        case ESP_SLEEP_WAKEUP_EXT0:
-            s_cause_str = "BUTTON (EXT0)";
-            break;
+        case ESP_SLEEP_WAKEUP_EXT0:  s_cause_str = "BUTTON (EXT0)";  break;
 #elif CONFIG_IDF_TARGET_ESP32S3
-        case ESP_SLEEP_WAKEUP_EXT1:
-            s_cause_str = "BUTTON (EXT1)";
-            break;
+        case ESP_SLEEP_WAKEUP_EXT1:  s_cause_str = "BUTTON (EXT1)";  break;
 #endif
-        default:
-            s_cause_str = "FIRST_BOOT";
-            break;
+        default:                     s_cause_str = "FIRST_BOOT";     break;
     }
 
     /* ---- Increment RTC-persistent counters ---- */
@@ -475,18 +506,12 @@ void app_main(void)
     sequence++;
     esp_task_wdt_reset();
 
-    /* ---- LED on ---- */
-    gpio_config_t led_cfg = {
-        .pin_bit_mask = (1ULL << LED_GPIO),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    ESP_ERROR_CHECK(gpio_config(&led_cfg));
-    gpio_set_level(LED_GPIO, LED_ON);
+    /* ---- LED hardware init — dark start; LED turns on when advertising begins ----
+     * Both paths call gpio_hold_dis() internally. The LED is initialised to its
+     * inactive state here and will only light up inside start_advertising(). */
+    led_init();
 
-    /* ---- NVS init — required by BLE controller for PHY calibration data ---- */
+    /* ---- NVS init — required before BLE controller init ---- */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -495,8 +520,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     /* ---- Initialise NimBLE (controller + host) ----
-     * nimble_port_init() handles esp_bt_controller_init/enable internally.
-     * Do NOT call those APIs explicitly — causes double-init crash. */
+     * nimble_port_init() handles esp_bt_controller_init/enable internally. */
     ESP_ERROR_CHECK(nimble_port_init());
 
     ble_hs_cfg.sync_cb  = ble_sync_cb;
@@ -506,14 +530,13 @@ void app_main(void)
     nimble_port_freertos_init(ble_host_task);
 
     /* ---- Draw initial ANSI dashboard ----
-     * Clears the screen (removing ESP-IDF startup log spam), hides cursor, and
-     * suppresses all further ESP-IDF logging. Errors from this point are shown
-     * in the Status field. Called after nimble_port_freertos_init() so startup
-     * logs appear before the clear rather than after. */
+     * Clears screen, hides cursor, suppresses all subsequent ESP-IDF logs.
+     * Called after nimble_port_freertos_init() so startup logs appear before
+     * the screen clear rather than intermixed with dashboard content. */
     draw_dashboard(true);
     esp_task_wdt_reset();
 
-    /* ---- Create 250 ms periodic dashboard refresh timer ---- */
+    /* ---- Create 250 ms dashboard refresh timer ---- */
     esp_timer_create_args_t refresh_args = {
         .callback = refresh_timer_cb,
         .name     = "dash_refresh",
@@ -522,53 +545,52 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_timer_start_periodic(s_refresh_timer, DASH_REFRESH_US));
 
     /* ---- Create and start 10 s advertising window timer ---- */
-    esp_timer_create_args_t adv_timer_args = {
+    esp_timer_create_args_t adv_args = {
         .callback = adv_timer_cb,
         .name     = "adv_window",
     };
-    ESP_ERROR_CHECK(esp_timer_create(&adv_timer_args, &s_adv_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&adv_args, &s_adv_timer));
 
-    /* Record cycle start time for progress bar (before starting adv timer) */
     s_cycle_start_us = esp_timer_get_time();
     ESP_ERROR_CHECK(esp_timer_start_once(s_adv_timer, ADV_WINDOW_US));
 
-    /* Unsubscribe from WDT before the long polling wait (default WDT timeout is 5 s;
-     * polling loop runs for up to 10 s while BLE is active) */
+    /* Unsubscribe from WDT before the 10 s polling wait (default timeout is 5 s) */
     esp_task_wdt_delete(NULL);
 
-    /* ---- Polling loop — redraw dashboard every ~250 ms until adv window ends ---- */
+    /* ---- Polling loop — redraw dashboard every ~250 ms ---- */
     while (!s_adv_done) {
-        /* Wait for either the refresh tick or an advertising-complete notification.
-         * 300 ms timeout as a safety net in case a notification is missed. */
         xTaskNotifyWait(0, ULONG_MAX, NULL, pdMS_TO_TICKS(300));
         draw_dashboard(false);
     }
-    /* Draw one final frame with SLEEPING status before tearing down */
-    draw_dashboard(false);
+    draw_dashboard(false);  /* final SLEEPING frame */
 
-    /* Re-subscribe for teardown phase */
+    /* Re-subscribe for teardown */
     esp_task_wdt_add(NULL);
     esp_task_wdt_reset();
 
     /* ---- Clean up timers ---- */
     esp_timer_stop(s_refresh_timer);
     esp_timer_delete(s_refresh_timer);
-    /* adv_timer may already be expired (ESP_ERR_INVALID_STATE is OK) */
-    esp_timer_stop(s_adv_timer);
+    esp_timer_stop(s_adv_timer);   /* may already be expired — error ignored */
     esp_timer_delete(s_adv_timer);
 
-    /* ---- Full BLE teardown — leaving radio powered destroys the power budget ---- */
+    /* ---- Full BLE teardown ---- */
     ble_stack_teardown();
     esp_task_wdt_reset();
 
-    /* ---- LED off, hold GPIO state across deep sleep ---- */
-    gpio_set_level(LED_GPIO, LED_OFF);
+    /* Safety: ensure LED is off regardless of which path ended advertising.
+     * Covers the ble_reset_cb() error path where adv_timer_cb() never fired. */
+    led_adv_off();
+
+    /* ---- Hold GPIO state for deep sleep (GPIO path only) ----
+     * The WS2812 RMT holds its data line LOW via eot_level=0 — no gpio_hold_en() needed.
+     * The GPIO path must hold the inactive level explicitly so the pin does not float. */
+#if !CONFIG_EXAMPLE_LED_WS2812
     gpio_hold_en(LED_GPIO);
+#endif
 
-    /* ---- Configure wakeup sources ---- */
+    /* ---- Configure wakeup sources and sleep ---- */
     configure_sleep();
-
-    /* Dashboard already shows SLEEPING; sleep immediately */
     esp_task_wdt_delete(NULL);
     esp_deep_sleep_start();
 }

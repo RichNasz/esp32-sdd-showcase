@@ -1,10 +1,15 @@
 # ==================== BOARD SELECTION ====================
-# This project supports four boards, selected via `idf.py set-target`:
+# Change only this section, then regenerate the project
 #
-#   esp32s3  →  Seeed XIAO ESP32S3  (LED GPIO 21 active-LOW, GPIO 0 RTC wakeup)
-#   esp32c6  →  Seeed XIAO ESP32-C6 (LED GPIO 15 active-LOW, timer-only wakeup)
-#   esp32c5  →  Seeed XIAO ESP32-C5 (LED GPIO 27 active-LOW, timer-only wakeup)
-#   esp32    →  Adafruit HUZZAH32   (LED GPIO 13 active-HIGH, GPIO 0 RTC wakeup)
+# Primary boards (sdkconfig.defaults.<target> configured for):
+#   esp32    → Adafruit HUZZAH32                    (GPIO 13, active HIGH, GPIO 0 ext0 wakeup)
+#   esp32s3  → YEJMKJ ESP32-S3-DevKitC-1-N16R8      (GPIO 48, WS2812, timer-only wakeup)
+#   esp32c5  → Seeed XIAO ESP32-C5                  (GPIO 27, active LOW, timer-only wakeup)
+#   esp32c6  → Espressif ESP32-C6-DevKitC-1-N8      (GPIO 8,  WS2812, timer-only wakeup)
+#
+# Secondary boards (require menuconfig override after set-target):
+#   esp32s3  → Seeed XIAO ESP32S3    (GPIO 21, active LOW, USB CDC, GPIO 0 ext1 wakeup)
+#   esp32c6  → Seeed XIAO ESP32-C6   (GPIO 15, active LOW, timer-only wakeup)
 #
 # Board-specific GPIO is set in sdkconfig.defaults.<target> via Kconfig.
 # =======================================================
@@ -16,9 +21,10 @@
 
 Single-file firmware. App_main runs once per wake cycle: increment RTC counters, broadcast a
 non-connectable BLE advertisement for 10 s using NimBLE, tear down the BLE stack completely,
-then enter deep sleep. The LED is lit while the beacon is broadcasting and turned off before
-entering deep sleep. The advertising-complete callback drives the teardown — app_main waits
-on a synchronisation primitive rather than polling.
+then enter deep sleep. The LED turns on when BLE advertising actually begins and off when
+advertising stops — it is dark during the init and teardown phases. The advertising-complete
+timer callback drives the teardown signal; app_main uses a polling loop with task notifications
+rather than a blocking semaphore, so the ANSI dashboard can refresh every 250 ms.
 
 Wakeup strategy is target-dependent:
 - **ESP32-S3 and ESP32**: 10-second timer wakeup + GPIO button wakeup (ext1 on S3, ext0 on ESP32).
@@ -58,14 +64,61 @@ timer from button wakeup.
   running drains power and can cause instability on the next wake cycle.
 - If advertising fails to start, the device must log the error and proceed directly to deep
   sleep. It must never block indefinitely waiting for BLE resources.
-- The user LED must be turned on when advertising starts and turned off after advertising stops,
-  before entering deep sleep. This gives the user a visible indication that the beacon is active.
-  LED GPIO and active level are board-specific (see Kconfig symbols CONFIG_EXAMPLE_LED_GPIO and
-  CONFIG_EXAMPLE_LED_ACTIVE_LEVEL). gpio_hold_dis() must be called before driving the LED pin
-  on any wake from deep sleep; gpio_hold_en() must be called after LED off, before sleep.
+- The LED must turn on **only when BLE advertising is active** and off **as soon as advertising
+  stops**. It must remain dark during BLE initialisation, NimBLE teardown, and deep sleep. The
+  exact LED mechanism depends on the board's LED type (see LED Architecture section below).
+  `gpio_hold_dis()` must be called at app_main entry before any LED or GPIO operation. For the
+  simple GPIO path, `gpio_hold_en()` must be called after the LED is driven off, before sleep.
 - Button wakeup GPIO (CONFIG_EXAMPLE_BUTTON_GPIO) is only defined for targets where the boot
   button is RTC-capable (ESP32-S3, ESP32). The Kconfig symbol must depend on the target to
   avoid misuse on C6/C5.
+
+## LED Architecture
+
+Two LED code paths, selected at compile time by `CONFIG_EXAMPLE_LED_WS2812`:
+
+**`#if CONFIG_EXAMPLE_LED_WS2812` — WS2812 RMT path:**
+- `led_init()`: calls `gpio_hold_dis()` to release any deep-sleep hold, then initialises the RMT
+  channel at 10 MHz resolution (GRB byte order, per the `esp32-ws2812-led-engineer` skill).
+  Clears the LED to dark `(0, 0, 0)` immediately after init.
+- LED on (advertising active): solid blue `(0, 0, 64)`. Blue is the conventional colour for BLE
+  activity and meets the 64/255 minimum brightness floor from `shared-specs/AIGenLessonsLearned.md`.
+  Turn on immediately after `ble_gap_adv_start()` returns success.
+- LED off (advertising stopped): `ws2812_write(0, 0, 0)`. Call immediately after
+  `ble_gap_adv_stop()`. The RMT frame's `eot_level = 0` holds the data line LOW, so
+  `gpio_hold_en()` is not required for the WS2812 path.
+
+**`#else` — Simple GPIO path:**
+- `led_init()` at app_main entry: calls `gpio_hold_dis()`, configures the GPIO as output, and
+  drives it to the inactive level (LED off). Do NOT drive it to the active level here — the LED
+  must remain dark during the BLE initialisation phase.
+- LED on (advertising active): `gpio_set_level(LED_GPIO, CONFIG_EXAMPLE_LED_ACTIVE_LEVEL)` called
+  immediately after `ble_gap_adv_start()` returns success.
+- LED off (advertising stopped): `gpio_set_level(LED_GPIO, 1 - CONFIG_EXAMPLE_LED_ACTIVE_LEVEL)`
+  called immediately after `ble_gap_adv_stop()`.
+- `gpio_hold_en(LED_GPIO)` must be called after the LED is driven off, before `esp_deep_sleep_start()`.
+
+**Failure paths**: if `ble_gap_adv_start()` fails, the LED must not be turned on. If advertising
+fails after the LED is already on (unexpected case), turn it off before proceeding to sleep.
+
+## Kconfig Symbols
+
+Three symbols required in `main/Kconfig.projbuild`, inside `menu "BLE Beacon Configuration"`:
+
+- `EXAMPLE_LED_GPIO` (int, range 0–48): GPIO driving the onboard LED. Default is the primary
+  board's GPIO; overridden per target via `sdkconfig.defaults.<target>`.
+- `EXAMPLE_LED_WS2812` (bool, default n): when enabled, selects the WS2812 RMT code path.
+  `EXAMPLE_LED_ACTIVE_LEVEL` is ignored when this symbol is enabled. Enable for WS2812 primary
+  boards via `sdkconfig.defaults.<target>`; secondary GPIO-LED boards leave it disabled.
+- `EXAMPLE_LED_ACTIVE_LEVEL` (int, range 0–1, default 0): logic level that turns the GPIO LED ON.
+  0 = active LOW, 1 = active HIGH. Not used when `EXAMPLE_LED_WS2812` is enabled.
+- `EXAMPLE_BUTTON_GPIO` (int, default 0): unchanged; still depends on ESP32 or ESP32-S3 target.
+
+## Component Dependencies
+
+`main/CMakeLists.txt REQUIRES` must always include `esp_driver_rmt` — even on targets where
+`EXAMPLE_LED_WS2812=n`. This avoids conditional CMake complexity and is harmless when the
+`#if CONFIG_EXAMPLE_LED_WS2812` guard compiles out all RMT code paths.
 
 ## Gotchas
 
