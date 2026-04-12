@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-03-13 | Agent: Claude Code
+     Date: 2026-04-12 | Agent: Claude Code
      ================================================ -->
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -22,7 +22,7 @@ broader ESP32 community a reusable SDD toolkit they can fork and extend for thei
 ## Features
 
 - **8 progressive examples** spanning breathing LEDs through multi-year BLE beacons — every line of C generated from spec
-- **7 published agent skills** covering the full SDD pipeline: spec creation, code generation, deep sleep, hardware crypto, board specs, documentation, and validation
+- **9 published agent skills** covering the full SDD pipeline: spec creation, code generation, WS2812 LED, BLE beaconing, deep sleep, hardware crypto, board specs, documentation, and validation
 - **AI-generated board specs** from vendor datasheets for Adafruit, Seeed, Espressif, LilyGo, and more
 - **Strict human/AI separation** — generated files carry agent headers; only `specs/` is human-authored
 - **Full OSS governance** — Contributing guide, Code of Conduct, Security policy, and GitHub issue templates
@@ -78,7 +78,7 @@ All eight examples are fully generated from their spec files. They are ordered b
 
 ## Skills
 
-Seven agent skills implement the complete SDD pipeline. Invoke any skill in Claude Code by name.
+Nine agent skills implement the complete SDD pipeline. Invoke any skill in Claude Code by name.
 
 | Skill | Purpose |
 |---|---|
@@ -86,6 +86,8 @@ Seven agent skills implement the complete SDD pipeline. Invoke any skill in Clau
 | [esp32-sdd-full-project-generator](skills/esp32-sdd-full-project-generator/SKILL.md) | Primary code-gen skill — produces a complete ESP-IDF project from spec files |
 | [esp32-sdd-documentation-generator](skills/esp32-sdd-documentation-generator/SKILL.md) | Generates all Markdown documentation from `specs/`; run after any spec change |
 | [esp32-board-spec-generator](skills/esp32-board-spec-generator/SKILL.md) | Creates structured board-spec Markdown from vendor datasheets |
+| [esp32-ws2812-led-engineer](skills/esp32-ws2812-led-engineer/SKILL.md) | Generates the canonical WS2812B RMT driver block, Kconfig symbols, and sdkconfig fragments for any example with an addressable RGB LED |
+| [esp32-ble-beacon-engineer](skills/esp32-ble-beacon-engineer/SKILL.md) | Designs NimBLE advertising, manufacturer data PDUs, bounded advertising windows, and BLE teardown before deep sleep |
 | [esp32-deep-sleep-engineer](skills/esp32-deep-sleep-engineer/SKILL.md) | Designs deep-sleep configurations, ULP programs, and power budgets |
 | [esp32-hardware-crypto-configurer](skills/esp32-hardware-crypto-configurer/SKILL.md) | Configures hardware AES/SHA/RSA, NVS encryption, flash encryption, and secure boot |
 | [esp32-sdd-project-validator](skills/esp32-sdd-project-validator/SKILL.md) | Validates any example folder against the permanent locked structure; reports PASS/FAIL |
