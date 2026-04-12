@@ -161,6 +161,19 @@ If you find yourself writing a function call, a struct definition, or a numbered
   show menu items) or to symbols whose absence would be caught at link time rather than compile
   time. (Apr 2026)
 
+- **USB-native boards lose the serial port during deep sleep — use a UART bridge board to observe multiple sleep/wake cycles.**
+  Boards using the ESP32 native USB peripheral (USB CDC or USB Serial/JTAG) for console output
+  lose the `/dev/cu.usbmodem*` port when the ESP32 enters deep sleep, because the USB peripheral
+  is powered off as part of the deep-sleep power domain. `idf.py monitor` exits immediately on
+  the first sleep entry and cannot observe subsequent wakeups. There is no firmware workaround
+  that preserves the USB connection during true deep sleep.
+  Use a UART bridge board for serial-monitored deep sleep tests:
+  - Adafruit HUZZAH32 (CP2104 bridge, always-on from USB 5V)
+  - Espressif ESP32-C6-DevKitC-1-N8 left USB-C port (CH343P bridge)
+  Both boards keep the serial port alive across sleep cycles — monitor shows silence during sleep,
+  output resumes on wakeup. In README and TestSpec, direct readers to these boards for counter
+  persistence tests and note that USB-native boards require LED-only observation. (Apr 2026)
+
 - **When removing or renaming a macro, audit log format strings for stale references.**
   `ESP_LOGI`/`ESP_LOGD` format arguments that reference a `#define` are not flagged by the
   compiler until the code path that uses them is actually built. In a dual-path file guarded

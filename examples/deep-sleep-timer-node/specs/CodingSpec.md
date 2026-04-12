@@ -25,7 +25,7 @@ connections. The entire active window is synchronous and linear.
 
 ## Key Constraints
 
-- Sleep duration: 15 seconds.
+- Sleep duration: 5 seconds.
 - Active window budget: 200 ms maximum. This includes ESP-IDF boot time, LED blink, logging,
   and serial flush. Anything beyond 200 ms active time indicates a regression.
   The 200 ms budget is most constraining on USB-CDC boards (XIAO ESP32S3 needs ~50 ms for

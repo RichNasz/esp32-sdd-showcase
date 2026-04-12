@@ -11,7 +11,7 @@
 ## Overview
 
 This example demonstrates the fundamental wake-measure-persist-sleep loop that every
-battery-powered ESP32 project depends on. An RTC timer fires every 15 seconds; the
+battery-powered ESP32 project depends on. An RTC timer fires every 5 seconds; the
 firmware increments a boot counter stored in RTC memory (no NVS overhead), logs the
 count and wakeup cause over serial, blinks the onboard LED as a visible heartbeat, then
 immediately returns to deep sleep. On boards with a WS2812 RGB LED (YEJMKJ DevKitC,
@@ -103,6 +103,24 @@ For XIAO ESP32S3 only, also change the console:
 
 Then build and flash normally.
 
+## Serial Monitor During Deep Sleep
+
+**UART bridge boards** (Adafruit HUZZAH32, Espressif ESP32-C6-DevKitC-1-N8 left USB-C port):
+`idf.py monitor` stays connected across sleep cycles. The bridge chip (CP2104 / CH343P) remains
+powered from USB 5 V while the ESP32 is asleep, so the serial port never disappears. Output is
+silent during sleep and resumes on each wakeup — ideal for observing multiple cycles in one session.
+
+**USB-native boards** (YEJMKJ DevKitC, XIAO ESP32S3, XIAO ESP32-C5, XIAO ESP32-C6):
+When the ESP32 enters deep sleep, its native USB peripheral is powered off. The serial port
+(`/dev/cu.usbmodem*`) disappears from the host, and `idf.py monitor` exits immediately. There is
+no firmware workaround that preserves the USB connection during true deep sleep without defeating
+its purpose.
+
+Practical options for USB-native boards:
+- **Observe the LED** — the WS2812 random-colour heartbeat provides clear per-cycle feedback without needing a serial connection.
+- **Use a UART board for serial observation** — flash the HUZZAH32 or ESP32-C6-DevKitC for counter and wakeup-cause verification.
+- **Single-cycle capture** — run `idf.py monitor`, observe the first wake log, and accept that the session ends when the board sleeps.
+
 ## Opening in VS Code / Cursor
 
 This folder is a complete, standalone ESP-IDF project. Open **only this folder**
@@ -122,19 +140,19 @@ folder as your active workspace while developing this example.
 ```
 I (312) sleep-node: First boot — counter resets to 0 on power-cycle
 I (314) sleep-node: WS2812 RMT init on GPIO 48 (10 MHz, GRB order)
-I (518) sleep-node: Sleeping for 15 s
+I (518) sleep-node: Sleeping for 5 s
 ```
 
 ### Subsequent wakeups
 
 ```
-I (312) sleep-node: Wake #2 — 15 s timer wakeup
+I (312) sleep-node: Wake #2 — 5 s timer wakeup
 I (313) sleep-node: WS2812 RMT init on GPIO 48 (10 MHz, GRB order)
-I (517) sleep-node: Sleeping for 15 s
+I (517) sleep-node: Sleeping for 5 s
 
-I (312) sleep-node: Wake #3 — 15 s timer wakeup
+I (312) sleep-node: Wake #3 — 5 s timer wakeup
 I (313) sleep-node: WS2812 RMT init on GPIO 48 (10 MHz, GRB order)
-I (517) sleep-node: Sleeping for 15 s
+I (517) sleep-node: Sleeping for 5 s
 ```
 
 Each wake cycle the RGB LED blinks a different colour (red, green, blue, cyan, magenta,
@@ -157,7 +175,7 @@ I (312) sleep-node: First boot — counter resets to 0 on power-cycle
   from a timer wakeup (`ESP_SLEEP_WAKEUP_TIMER`). Unknown causes are logged as warnings
   and the device proceeds to sleep without aborting.
 - **`esp_sleep_enable_timer_wakeup()` + `esp_deep_sleep_start()`** — canonical RTC-timer
-  deep sleep sequence; duration expressed in microseconds (15 s = 15 000 000 µs).
+  deep sleep sequence; duration expressed in microseconds (5 s = 15 000 000 µs).
 - **`gpio_hold_dis()`** — must be called before driving the LED GPIO on each wake. Deep
   sleep latches GPIO pad states; driving a held pin has no effect.
 - **WS2812 RMT driver** — the `#if CONFIG_EXAMPLE_LED_WS2812` path initialises an RMT TX
@@ -227,10 +245,10 @@ Testing philosophy: automated first, manual only when hardware observation is un
    `diagram.json` at example root.
 
    ```sh
-   wokwi-cli --timeout 60000 --expect "Wake #3" .
+   wokwi-cli --timeout 20000 --expect "Wake #3" .
    ```
 
-   Pass: `Wake #3` appears in simulated serial output within 60 seconds (3 full 15 s cycles).
+   Pass: `Wake #3` appears in simulated serial output within 20 seconds (3 full 5 s cycles).
 
 ### Manual — hardware required
 
@@ -239,13 +257,17 @@ Testing philosophy: automated first, manual only when hardware observation is un
    *Why manual*: `RTC_DATA_ATTR` persistence depends on the actual RTC power domain
    staying live through a true hardware deep-sleep state.
 
-   1. Flash to YEJMKJ ESP32-S3-DevKitC-1-N16R8: `idf.py set-target esp32s3 && idf.py -p /dev/cu.usbmodem2101 flash`
-   2. Open serial monitor in a separate terminal: `idf.py monitor`
-   3. Observe 5 consecutive wakeups — confirm `Wake #1`, `Wake #2`, ..., `Wake #5` with no gaps.
-   4. Power-cycle the board (disconnect USB, reconnect).
-   5. Confirm counter resets: next output must show `First boot` then `Wake #1`.
+   > **Use a UART bridge board for this test.** The Adafruit HUZZAH32 or the
+   > ESP32-C6-DevKitC-1-N8 (left USB-C port) keep the serial port alive during deep
+   > sleep. USB-native boards (YEJMKJ DevKitC, all XIAO variants) disconnect on sleep
+   > entry and `idf.py monitor` exits — preventing observation of subsequent wakeups.
 
-   Pass: counter increments monotonically; resets only on power-cycle.
+   1. Flash to Adafruit HUZZAH32: `idf.py set-target esp32 && idf.py build flash monitor`
+   2. Observe 5 consecutive wakeups — confirm `Wake #1`, `Wake #2`, ..., `Wake #5` with no gaps.
+   3. Power-cycle the board (disconnect USB, reconnect).
+   4. Confirm counter resets: output must show `First boot` then `Wake #1`.
+
+   Pass: counter increments monotonically; resets only on power-cycle; monitor stays connected across sleep cycles.
 
 8. **T-M2 — LED heartbeat visibility (GPIO boards)**
 
@@ -253,7 +275,7 @@ Testing philosophy: automated first, manual only when hardware observation is un
 
    1. Flash to a simple GPIO board (e.g. Adafruit HUZZAH32 or Seeed XIAO ESP32-C5).
    2. Observe the LED blinks exactly once per wake cycle.
-   3. LED must be off during the 15 s sleep period.
+   3. LED must be off during the 5 s sleep period.
    4. Blink must be visibly brief (~100 ms) — not a long flash.
 
    Pass: single brief blink per cycle, off during sleep.
@@ -263,12 +285,16 @@ Testing philosophy: automated first, manual only when hardware observation is un
    *Why manual*: Verifying colour randomness across wakeup cycles requires observing the
    physical LED; the hardware RNG cannot be meaningfully exercised in simulation.
 
+   > **Observe the LED directly.** USB-native boards (YEJMKJ DevKitC, all XIAO variants)
+   > lose the serial connection during deep sleep — `idf.py monitor` exits on the first
+   > sleep entry. The WS2812 LED provides clear per-cycle feedback without serial monitoring.
+
    1. Flash to a WS2812 board (YEJMKJ DevKitC or ESP32-C6-DevKitC-1-N8).
-   2. Observe 5+ consecutive wakeups.
+   2. Observe 5+ consecutive wakeups by watching the LED.
    3. Confirm the LED colour changes at least once across the sequence. A fixed colour
       across all cycles indicates the RNG is not being applied.
    4. Confirm each blink is clearly visible — brightness must be at 64/255, not dim.
-   5. Confirm the LED is off between blinks and during the 15 s sleep period.
+   5. Confirm the LED is off between blinks and during the 5 s sleep period.
 
    Pass: colour varies across cycles; each blink is clearly visible; LED is off between
    blinks and during sleep.

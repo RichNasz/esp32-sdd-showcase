@@ -40,7 +40,7 @@ users must run `idf.py menuconfig` after `idf.py set-target <target>` and set:
 
 ## Requirements
 
-- Wake from deep sleep on a 15-second RTC timer wakeup.
+- Wake from deep sleep on a 5-second RTC timer wakeup.
 - On every wake: increment a `RTC_DATA_ATTR uint32_t boot_count` (survives deep sleep without NVS overhead).
 - Detect first boot (`ESP_SLEEP_WAKEUP_UNDEFINED`) vs timer wakeup (`ESP_SLEEP_WAKEUP_TIMER`) and log accordingly.
 - Log boot count and wakeup cause over serial on every wake.
@@ -63,7 +63,7 @@ skill auto-invokes:
 
 | State | Current | Duration |
 |---|---|---|
-| Deep sleep | ~14 µA | 15 s |
+| Deep sleep | ~14 µA | 5 s |
 | Active (CPU + USB-CDC) | ~68 mA | ~200 ms |
 | Target average | < 1 mA | — |
 

@@ -23,7 +23,7 @@ static const char *TAG = "sleep-node";
 static RTC_DATA_ATTR uint32_t boot_count;
 
 #define LED_GPIO           CONFIG_EXAMPLE_LED_GPIO
-#define SLEEP_DURATION_US  (15ULL * 1000 * 1000)  /* 15 s in microseconds */
+#define SLEEP_DURATION_US  (5ULL * 1000 * 1000)   /* 5 s in microseconds */
 #define BLINK_ON_MS        100
 #define BLINK_OFF_MS       100
 
@@ -164,7 +164,7 @@ void app_main(void)
     if (cause == ESP_SLEEP_WAKEUP_UNDEFINED) {
         ESP_LOGI(TAG, "First boot — counter resets to 0 on power-cycle");
     } else if (cause == ESP_SLEEP_WAKEUP_TIMER) {
-        ESP_LOGI(TAG, "Wake #%" PRIu32 " — 15 s timer wakeup", boot_count);
+        ESP_LOGI(TAG, "Wake #%" PRIu32 " — 5 s timer wakeup", boot_count);
     } else {
         /* Unrecognised causes must not abort — log and continue to sleep. */
         ESP_LOGW(TAG, "Wake #%" PRIu32 " — unexpected wakeup cause %d; proceeding to sleep",
@@ -174,7 +174,7 @@ void app_main(void)
     led_init();
     led_heartbeat();
 
-    ESP_LOGI(TAG, "Sleeping for 15 s");
+    ESP_LOGI(TAG, "Sleeping for 5 s");
     esp_sleep_enable_timer_wakeup(SLEEP_DURATION_US);
     esp_deep_sleep_start();
 }
