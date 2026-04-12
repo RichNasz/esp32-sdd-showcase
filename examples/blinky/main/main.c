@@ -95,8 +95,8 @@ static void ws2812_init(void)
     ESP_ERROR_CHECK(rmt_enable(s_rmt_chan));
 
     ws2812_write(0, 0, 0);  /* ensure LED starts off */
-    ESP_LOGI(TAG, "WS2812 RMT channel init on GPIO %d (10 MHz, GRB order, max brightness %d/255)",
-             LED_GPIO, WS2812_MAX_BRIGHT);
+    ESP_LOGI(TAG, "WS2812 RMT channel init on GPIO %d (10 MHz, GRB order, max brightness 64/255)",
+             LED_GPIO);
 }
 
 /* ============================================================

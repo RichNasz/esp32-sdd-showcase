@@ -161,6 +161,15 @@ If you find yourself writing a function call, a struct definition, or a numbered
   show menu items) or to symbols whose absence would be caught at link time rather than compile
   time. (Apr 2026)
 
+- **When removing or renaming a macro, audit log format strings for stale references.**
+  `ESP_LOGI`/`ESP_LOGD` format arguments that reference a `#define` are not flagged by the
+  compiler until the code path that uses them is actually built. In a dual-path file guarded
+  by `#if CONFIG_EXAMPLE_LED_WS2812`, a WS2812-only macro removed from the data section
+  (e.g. `WS2812_MAX_BRIGHT`) will compile silently on LEDC targets but fail on WS2812 targets
+  with "undeclared identifier". Always grep for the old macro name across all log calls before
+  committing a refactor. The CodingSpec should name constants by value (e.g. "capped at 64/255")
+  rather than by macro name so log strings can be written as string literals instead. (Apr 2026)
+
 ## Template for Adding New Lessons
 When you discover something important:
 - Add it here under "Key Lessons Learned"
