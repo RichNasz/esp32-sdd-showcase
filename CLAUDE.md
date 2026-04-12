@@ -21,6 +21,7 @@ A **Spec-Driven Development (SDD)** showcase for ESP32 / ESP-IDF. The strict rul
 | `esp32-sdd-functional-spec-creator` | Starting a new example — creates `examples/<name>/FunctionalSpec.md` |
 | `esp32-sdd-full-project-generator` | After FunctionalSpec + CodingSpec exist — generates the complete ESP-IDF project |
 | `esp32-board-spec-generator` | Adding a new board — creates `board-specs/<vendor>/<board>.md` from a datasheet URL |
+| `esp32-ws2812-led-engineer` | Any example with a WS2812 RGB LED — generates RMT driver block, Kconfig symbol, CMakeLists dependency, and sdkconfig.defaults fragments; handles primary/secondary board pattern |
 | `esp32-deep-sleep-engineer` | Auto-invoked by full-project-generator when sleep is required; can also be run standalone |
 | `esp32-hardware-crypto-configurer` | Auto-invoked by full-project-generator when security is required; can also be run standalone |
 
