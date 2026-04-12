@@ -2,17 +2,32 @@
 menu "Blinky Configuration"
     config EXAMPLE_LED_GPIO
         int "LED GPIO number"
-        default 21
+        default 8
         range 0 48
         help
-            GPIO of the onboard user LED.
+            GPIO of the onboard LED (simple GPIO or WS2812 data line).
             Overridden per-target via sdkconfig.defaults.<target>.
+            DevKitC default: 8 (WS2812). HUZZAH32: 13. XIAO S3: 21.
+            XIAO C5: 27. XIAO C6: 15.
 
     config EXAMPLE_LED_ACTIVE_LEVEL
         int "LED active level (0=active-LOW, 1=active-HIGH)"
         default 0
         range 0 1
+        depends on !EXAMPLE_LED_WS2812
         help
-            Logic level that turns the LED ON.
+            Logic level that turns the LED ON (LEDC path only).
             0=active LOW (XIAO boards), 1=active HIGH (HUZZAH32).
+            Ignored when EXAMPLE_LED_WS2812=y.
+
+    config EXAMPLE_LED_WS2812
+        bool "LED is a WS2812B addressable RGB (uses RMT driver)"
+        default n
+        help
+            Enable for boards with a WS2812B onboard LED (e.g. Espressif
+            ESP32-C6-DevKitC-1-N8, GPIO 8). When enabled the RMT peripheral
+            drives the 800 kHz NRZ protocol and the breathing effect is
+            implemented as white brightness cycling in a software loop.
+            When disabled (default) the LEDC PWM driver is used with
+            interrupt-driven fading.
 endmenu

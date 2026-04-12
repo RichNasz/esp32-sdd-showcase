@@ -1,5 +1,6 @@
 # AGENT-GENERATED — do not edit by hand; regenerate via esp32-sdd-full-project-generator
-# Seeed XIAO ESP32-C6: GPIO 15, active LOW, USB Serial/JTAG console
-CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
-CONFIG_EXAMPLE_LED_GPIO=15
-CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=0
+# Espressif ESP32-C6-DevKitC-1-N8: WS2812 RGB LED on GPIO 8, UART bridge console (left USB-C, default).
+# No CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG needed — the left USB-C port uses the onboard UART bridge.
+# XIAO ESP32-C6 users: run `idf.py menuconfig` and set EXAMPLE_LED_WS2812=n, EXAMPLE_LED_GPIO=15.
+CONFIG_EXAMPLE_LED_GPIO=8
+CONFIG_EXAMPLE_LED_WS2812=y
