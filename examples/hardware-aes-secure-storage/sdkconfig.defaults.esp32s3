@@ -1,12 +1,16 @@
 # ================================================
 # AGENT-GENERATED — DO NOT EDIT BY HAND
-# Target: ESP32-S3 (Seeed XIAO ESP32S3)
-# Board-spec: board-specs/seeed/xiao-esp32s3.md
+# Target: ESP32-S3 (YEJMKJ ESP32-S3-DevKitC-1-N16R8 — PRIMARY)
+# Board-spec: board-specs/yejmkj/esp32-s3-devkitc-1-n16r8.md
 # ================================================
+#
+# WS2812 RGB LED on GPIO 48. Native USB OTG (no CH343P); console via USB Serial/JTAG.
+# XIAO ESP32S3 users: run `idf.py menuconfig` and set EXAMPLE_LED_WS2812=n, EXAMPLE_LED_GPIO=21,
+# and switch console to USB CDC under Component config → ESP System Settings.
 
-# USB CDC console (ESP32-S3 uses native USB OTG)
-CONFIG_ESP_CONSOLE_USB_CDC=y
+# USB Serial/JTAG console (YEJMKJ DevKitC uses native USB OTG — no CH343P bridge)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
-# LED: GPIO 21, active LOW (onboard orange LED)
-CONFIG_EXAMPLE_LED_GPIO=21
-CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=0
+# LED: GPIO 48, WS2812 RGB
+CONFIG_EXAMPLE_LED_GPIO=48
+CONFIG_EXAMPLE_LED_WS2812=y

@@ -1,12 +1,11 @@
 # ================================================
 # AGENT-GENERATED — DO NOT EDIT BY HAND
-# Target: ESP32-C6 (Seeed XIAO ESP32-C6)
-# Board-spec: board-specs/seeed/xiao-esp32c6.md
+# Target: ESP32-C6 (Espressif ESP32-C6-DevKitC-1-N8 — PRIMARY)
+# Board-spec: board-specs/espressif/esp32-c6-devkitc-1-n8.md
 # ================================================
+#
+# WS2812 RGB LED on GPIO 8, UART bridge console (left USB-C port — default, no extra sdkconfig).
+# XIAO ESP32-C6 users: run `idf.py menuconfig` and set EXAMPLE_LED_WS2812=n, EXAMPLE_LED_GPIO=15.
 
-# USB Serial/JTAG console (ESP32-C6 built-in USB Serial/JTAG controller)
-CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
-
-# LED: GPIO 15, active LOW (onboard blue LED)
-CONFIG_EXAMPLE_LED_GPIO=15
-CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=0
+CONFIG_EXAMPLE_LED_GPIO=8
+CONFIG_EXAMPLE_LED_WS2812=y

@@ -170,6 +170,14 @@ If you find yourself writing a function call, a struct definition, or a numbered
   committing a refactor. The CodingSpec should name constants by value (e.g. "capped at 64/255")
   rather than by macro name so log strings can be written as string literals instead. (Apr 2026)
 
+- **WS2812 status LED: use 64/255 brightness and at least 3 blinks for visibility.**
+  A brightness of 8/255 (~3%) is effectively invisible under normal room lighting — the LED
+  appears completely off even though the RMT signal is correct. Always use 64/255 (matching
+  the blinky example's colour table) as the minimum for any status indication. A single
+  500 ms blink is also easy to miss; use at least 3 blinks for pass/fail indicators so the
+  pattern is impossible to overlook. The symptom ("LED didn't light up at all") is
+  indistinguishable from a hardware fault (solder jumper) until brightness is ruled out. (Apr 2026)
+
 ## Template for Adding New Lessons
 When you discover something important:
 - Add it here under "Key Lessons Learned"

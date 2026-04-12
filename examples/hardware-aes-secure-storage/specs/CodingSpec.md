@@ -57,6 +57,41 @@ so callers never need to understand mbedTLS return values.
   CONFIG_MBEDTLS_HARDWARE_AES=y. The API call sites do not change — only the sdkconfig
   enables the accelerator.
 
+## LED Code Paths
+
+Two LED code paths are required to support all six boards:
+
+- **Simple GPIO path** (primary boards — XIAO S3, XIAO C6, XIAO C5, HUZZAH32): drive the
+  LED GPIO high or low. Use `CONFIG_EXAMPLE_LED_GPIO` and `CONFIG_EXAMPLE_LED_ACTIVE_LEVEL`
+  exactly as in the current implementation. No extra component dependency.
+
+- **WS2812 RMT path** (primary boards — YEJMKJ DevKitC S3 GPIO 48, ESP32-C6-DevKitC GPIO 8):
+  drive the LED via raw RMT (same approach as the blinky example). Use clearly visible
+  colours capped at 64/255 to protect eyes on bare LEDs: green (g=64) for pass, red (r=64)
+  for fail. Blink 3 times for both pass and fail so the indication is impossible to miss —
+  use 500 ms on/off for pass (slow, calm) and 100 ms on/off for fail (fast, urgent). Mirror
+  the blinky example's RMT timing constants (10 MHz resolution, GRB byte order).
+
+Select the path with `#if CONFIG_EXAMPLE_LED_WS2812` / `#else` / `#endif`. No
+`#ifdef CONFIG_IDF_TARGET_*` guards are needed — WS2812 compiles cleanly on all targets.
+
+## Kconfig Symbols
+
+Add to `main/Kconfig.projbuild` inside the existing `menu "Example Configuration"`:
+
+- `EXAMPLE_LED_GPIO` (int, 0–48) — GPIO for the status LED; default 21.
+- `EXAMPLE_LED_ACTIVE_LEVEL` (int, 0–1) — 0 = active LOW, 1 = active HIGH; default 0.
+  Not used when `EXAMPLE_LED_WS2812` is enabled.
+- `EXAMPLE_LED_WS2812` (bool) — default n. When y, the WS2812 RMT path is compiled in
+  instead of the plain GPIO path. Set via menuconfig for secondary DevKitC boards.
+
+## Component Dependencies
+
+`main/CMakeLists.txt` REQUIRES must include `led_strip` (for WS2812 RMT driver) in addition
+to `driver`, `esp_hw_support`, `esp_timer`, `mbedtls`, and `nvs_flash`. The `led_strip`
+component is always present in ESP-IDF 5.x and adds negligible overhead when the WS2812
+path is compiled out via `#if CONFIG_EXAMPLE_LED_WS2812`.
+
 ## File Layout (non-standard files)
 
 - main/secure_storage.c — AES + NVS implementation

@@ -1,6 +1,6 @@
 # AGENT-GENERATED — DO NOT EDIT BY HAND
 # Generated from specs/ using esp32-sdd-full-project-generator skill
-# Date: 2026-03-09 | Agent: Claude Code
+# Date: 2026-04-12 | Agent: Claude Code
 #
 # NOTE: Kconfig.projbuild must live in main/ (ESP-IDF requirement).
 # Placing it at the project root silently drops all symbols.
@@ -13,17 +13,32 @@ menu "Hardware AES Secure Storage"
         default 21
         range 0 48
         help
-            GPIO number of the onboard user LED.
-            Default 21 = Seeed XIAO ESP32S3 (orange LED).
+            GPIO number of the status LED.
+            Default 21 = Seeed XIAO ESP32S3 (orange LED, active LOW).
             Overridden per-target via sdkconfig.defaults.<target>.
+            For secondary DevKitC boards set this via menuconfig:
+              YEJMKJ ESP32-S3-DevKitC-1-N16R8 -> 48 (WS2812)
+              Espressif ESP32-C6-DevKitC-1-N8  ->  8 (WS2812)
 
     config EXAMPLE_LED_ACTIVE_LEVEL
         int "LED active level (0 = active-LOW, 1 = active-HIGH)"
         default 0
         range 0 1
         help
-            Logic level that turns the LED ON.
-            0 = active LOW (Seeed XIAO boards: S3, C6, C5).
+            Logic level that turns the GPIO LED ON.
+            0 = active LOW  (Seeed XIAO S3, C6, C5).
             1 = active HIGH (Adafruit HUZZAH32).
+            Not used when EXAMPLE_LED_WS2812 is enabled.
+
+    config EXAMPLE_LED_WS2812
+        bool "Use WS2812 RGB LED (RMT-driven)"
+        default n
+        help
+            When enabled, the status LED is driven via the RMT peripheral
+            using the raw WS2812B NRZ protocol (GRB byte order, 800 kHz).
+            EXAMPLE_LED_ACTIVE_LEVEL is ignored in this mode.
+            Enable for secondary DevKitC boards (GPIO 48 on YEJMKJ ESP32-S3,
+            GPIO 8 on Espressif ESP32-C6-DevKitC-1-N8).
+            Leave disabled (default) for all XIAO boards and HUZZAH32.
 
 endmenu

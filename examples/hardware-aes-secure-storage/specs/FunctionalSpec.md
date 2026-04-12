@@ -12,12 +12,21 @@ logs hardware vs software AES speed.
 
 | Board | SoC | idf.py target | LED GPIO | LED polarity | Console config |
 | --- | --- | --- | --- | --- | --- |
-| Seeed XIAO ESP32S3 (default) | ESP32-S3 | `esp32s3` | GPIO 21 | Active LOW | `CONFIG_ESP_CONSOLE_USB_CDC=y` |
-| Seeed XIAO ESP32-C6 | ESP32-C6 | `esp32c6` | GPIO 15 | Active LOW | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
+| YEJMKJ ESP32-S3-DevKitC-1-N16R8 *(primary)* | ESP32-S3 | `esp32s3` | GPIO 48 (WS2812) | — | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
+| Seeed XIAO ESP32S3 *(secondary)* | ESP32-S3 | `esp32s3` | GPIO 21 | Active LOW | `CONFIG_ESP_CONSOLE_USB_CDC=y` |
+| Espressif ESP32-C6-DevKitC-1-N8 *(primary)* | ESP32-C6 | `esp32c6` | GPIO 8 (WS2812) | — | UART bridge (no extra config needed) |
+| Seeed XIAO ESP32-C6 *(secondary)* | ESP32-C6 | `esp32c6` | GPIO 15 | Active LOW | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
 | Seeed XIAO ESP32-C5 | ESP32-C5 | `esp32c5` | GPIO 27 | Active LOW | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` |
 | Adafruit HUZZAH32 | ESP32 | `esp32` | GPIO 13 | Active HIGH | UART (CP2104; no extra config needed) |
 
-Multi-board guard: wrap board-specific GPIO and console config in `#if CONFIG_IDF_TARGET_*` blocks.
+Primary boards are auto-configured via `sdkconfig.defaults.<target>` — no menuconfig step required.
+Secondary boards share a SoC target with their primary counterpart and require one extra step:
+after `idf.py set-target`, run `idf.py menuconfig` → Example Configuration → set
+`EXAMPLE_LED_WS2812=n` and `EXAMPLE_LED_GPIO` to 21 (XIAO S3) or 15 (XIAO C6).
+For the XIAO ESP32S3 also switch the console to USB CDC under Component config → ESP System Settings.
+
+This primary/secondary assignment mirrors the blinky example (DevKitC boards are primary for
+their targets; XIAO boards are secondary when they share a target with a DevKitC).
 
 ## Requirements
 
@@ -34,8 +43,10 @@ Multi-board guard: wrap board-specific GPIO and console config in `#if CONFIG_ID
 ## Hardware Dependencies
 
 - Board-specs:
-  - board-specs/seeed/xiao-esp32s3.md (ESP32-S3, LED GPIO 21 active LOW)
-  - board-specs/seeed/xiao-esp32c6.md (ESP32-C6, LED GPIO 15 active LOW)
+  - board-specs/yejmkj/esp32-s3-devkitc-1-n16r8.md (ESP32-S3 primary, WS2812 GPIO 48, USB Serial/JTAG)
+  - board-specs/seeed/xiao-esp32s3.md (ESP32-S3 secondary, LED GPIO 21 active LOW)
+  - board-specs/espressif/esp32-c6-devkitc-1-n8.md (ESP32-C6 primary, WS2812 GPIO 8, UART bridge)
+  - board-specs/seeed/xiao-esp32c6.md (ESP32-C6 secondary, LED GPIO 15 active LOW)
   - board-specs/seeed/xiao-esp32c5.md (ESP32-C5, LED GPIO 27 active LOW)
   - board-specs/adafruit/huzzah32.md (ESP32, LED GPIO 13 active HIGH)
 - No external components required on any supported board.
@@ -52,4 +63,4 @@ Multi-board guard: wrap board-specific GPIO and console config in `#if CONFIG_ID
 - Hardware AES throughput ≥ 5 MB/s on Xtensa targets (ESP32, ESP32-S3); ≥ 2 MB/s on RISC-V targets (ESP32-C5, ESP32-C6).
 - Encrypted blob in NVS is not human-readable (ciphertext differs from plaintext).
 - No memory leaks (heap usage before and after round-trip must be equal).
-- Builds cleanly for all four targets without warnings.
+- Builds cleanly for all four targets (six boards) without warnings.
