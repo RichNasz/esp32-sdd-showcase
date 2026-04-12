@@ -1,0 +1,14 @@
+# AGENT-GENERATED — do not edit by hand
+# Generated from specs/ using esp32-ws2812-led-engineer skill (sub-workflow)
+# Date: 2026-04-12 | Agent: Claude Code
+#
+# Target: esp32c5 (Seeed XIAO ESP32-C5 — sole board for this target)
+# Board-spec: board-specs/seeed/xiao-esp32c5.md
+#
+# Simple GPIO yellow LED on GPIO 27, active LOW.
+# Console: USB Serial/JTAG (built-in, no external bridge).
+
+CONFIG_EXAMPLE_LED_GPIO=27
+CONFIG_EXAMPLE_LED_WS2812=n
+CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=0
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

@@ -1,0 +1,13 @@
+# AGENT-GENERATED — do not edit by hand
+# Generated from specs/ using esp32-ws2812-led-engineer skill (sub-workflow)
+# Date: 2026-04-12 | Agent: Claude Code
+#
+# Target: esp32 (Adafruit HUZZAH32 — sole board for this target)
+# Board-spec: board-specs/adafruit/huzzah32.md
+#
+# Simple GPIO red LED on GPIO 13, active HIGH.
+# Console: CP2104 UART bridge — no console override needed.
+
+CONFIG_EXAMPLE_LED_GPIO=13
+CONFIG_EXAMPLE_LED_WS2812=n
+CONFIG_EXAMPLE_LED_ACTIVE_LEVEL=1

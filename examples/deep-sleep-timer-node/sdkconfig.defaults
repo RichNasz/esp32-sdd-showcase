@@ -1,0 +1,9 @@
+# AGENT-GENERATED — do not edit by hand
+# Generated from specs/ using esp32-sdd-full-project-generator skill
+# Date: 2026-04-12 | Agent: Claude Code
+#
+# Shared across all targets. Per-target sdkconfig.defaults.<target> files
+# extend or override these settings.
+
+# Safety: canary-word stack overflow detection on all targets
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y

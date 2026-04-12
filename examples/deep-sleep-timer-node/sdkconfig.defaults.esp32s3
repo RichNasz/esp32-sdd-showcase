@@ -1,0 +1,21 @@
+# AGENT-GENERATED — do not edit by hand
+# Generated from specs/ using esp32-ws2812-led-engineer skill (sub-workflow)
+# Date: 2026-04-12 | Agent: Claude Code
+#
+# Target: esp32s3 (YEJMKJ ESP32-S3-DevKitC-1-N16R8 — PRIMARY)
+# Board-spec: board-specs/yejmkj/esp32-s3-devkitc-1-n16r8.md
+#
+# WS2812 RGB LED on GPIO 48. USB Serial/JTAG console (single USB-C, no CH343P).
+# Note: solder jumper on the DevKitC board may need bridging if the LED is non-functional.
+#
+# Seeed XIAO ESP32S3 users (secondary board for esp32s3):
+#   After `idf.py set-target esp32s3`, run `idf.py menuconfig` and set:
+#     EXAMPLE_LED_WS2812=n
+#     EXAMPLE_LED_GPIO=21
+#     EXAMPLE_LED_ACTIVE_LEVEL=0
+#     ESP_CONSOLE_USB_SERIAL_JTAG=n
+#     ESP_CONSOLE_USB_CDC=y
+
+CONFIG_EXAMPLE_LED_GPIO=48
+CONFIG_EXAMPLE_LED_WS2812=y
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

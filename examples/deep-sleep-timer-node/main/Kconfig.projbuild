@@ -1,0 +1,33 @@
+# AGENT-GENERATED — do not edit by hand
+# Generated from specs/ using esp32-ws2812-led-engineer skill (sub-workflow)
+# Date: 2026-04-12 | Agent: Claude Code
+
+menu "Example Configuration"
+
+    config EXAMPLE_LED_GPIO
+        int "LED GPIO number"
+        default 48
+        range 0 48
+        help
+            GPIO driving the onboard LED.
+            Overridden per-target via sdkconfig.defaults.<target>.
+            WS2812 boards: set via sdkconfig.defaults (primary) or menuconfig (secondary).
+
+    config EXAMPLE_LED_WS2812
+        bool "Use WS2812 RGB LED (RMT-driven)"
+        default n
+        help
+            When enabled, the LED is driven via the RMT peripheral using the WS2812B
+            NRZ protocol (GRB byte order, 800 kHz). EXAMPLE_LED_ACTIVE_LEVEL is ignored.
+            Enable for WS2812 primary boards via sdkconfig.defaults.<target>.
+            Secondary GPIO-LED boards leave this disabled (default).
+
+    config EXAMPLE_LED_ACTIVE_LEVEL
+        int "LED active level (0 = active-LOW, 1 = active-HIGH)"
+        default 0
+        range 0 1
+        help
+            Logic level that turns the GPIO LED ON.
+            Not used when EXAMPLE_LED_WS2812 is enabled.
+
+endmenu

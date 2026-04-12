@@ -1,0 +1,18 @@
+# AGENT-GENERATED — do not edit by hand
+# Generated from specs/ using esp32-ws2812-led-engineer skill (sub-workflow)
+# Date: 2026-04-12 | Agent: Claude Code
+#
+# Target: esp32c6 (Espressif ESP32-C6-DevKitC-1-N8 — PRIMARY)
+# Board-spec: board-specs/espressif/esp32-c6-devkitc-1-n8.md
+#
+# WS2812 RGB LED on GPIO 8. Console: UART bridge via left USB-C port — no override needed.
+#
+# Seeed XIAO ESP32-C6 users (secondary board for esp32c6):
+#   After `idf.py set-target esp32c6`, run `idf.py menuconfig` and set:
+#     EXAMPLE_LED_WS2812=n
+#     EXAMPLE_LED_GPIO=15
+#     EXAMPLE_LED_ACTIVE_LEVEL=0
+#     ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+CONFIG_EXAMPLE_LED_GPIO=8
+CONFIG_EXAMPLE_LED_WS2812=y
