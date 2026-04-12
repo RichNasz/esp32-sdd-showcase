@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-03-13 | Agent: Claude Code
+     Date: 2026-04-12 | Agent: Claude Code
      ================================================ -->
 
 # ESP32 SDD Showcase — Full Documentation
@@ -36,7 +36,7 @@ The ESP32 SDD Showcase is a reference implementation of **Spec-Driven Developmen
 
 ## Agent Skills
 
-Seven skills implement the full SDD pipeline. Skills are **project-local** — they live in `.claude/skills/` inside this repository and are available in Claude Code automatically when you open the project. No install command is needed.
+Ten skills implement the full SDD pipeline. Skills are **project-local** — they live in `.claude/skills/` inside this repository and are available in Claude Code automatically when you open the project. No install command is needed.
 
 See [docs/guides/using-with-ai-agents.md](guides/using-with-ai-agents.md) for Claude Code setup and workflow details.
 
@@ -45,8 +45,11 @@ See [docs/guides/using-with-ai-agents.md](guides/using-with-ai-agents.md) for Cl
 | `esp32-sdd-functional-spec-creator` | Guides creation of a new `FunctionalSpec.md` |
 | `esp32-sdd-full-project-generator` | Generates a complete ESP-IDF project from specs |
 | `esp32-board-spec-generator` | Produces board specs from vendor datasheets |
+| `esp32-ws2812-led-engineer` | Generates WS2812B RMT driver block, Kconfig symbols, and sdkconfig fragments for addressable RGB LEDs; handles primary/secondary board pattern |
+| `esp32-ble-beacon-engineer` | Designs NimBLE advertising, manufacturer data PDUs, bounded advertising windows, and BLE stack teardown before deep sleep |
 | `esp32-deep-sleep-engineer` | Designs sleep configurations and power budgets |
 | `esp32-hardware-crypto-configurer` | Configures hardware AES, secure boot, flash encryption |
+| `esp32-ansi-monitor-engineer` | Generates ANSI TUI serial dashboards — Pattern A (continuous/scroll region) and Pattern B (per-cycle snapshot) — with escape definitions, drawing functions, and refresh timer wiring |
 | `esp32-sdd-documentation-generator` | Regenerates all documentation from specs (this file!) |
 | `esp32-sdd-project-validator` | Validates any example against the permanent locked structure; reports PASS/FAIL per check |
 

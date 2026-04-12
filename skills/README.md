@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-04-12 | Agent: Claude Code
+     Date: 2026-04-12 (updated) | Agent: Claude Code
      ================================================ -->
 
 # skills/
@@ -20,6 +20,7 @@ Agent skills published for this repository. Each skill is a self-contained AI wo
 | [esp32-ble-beacon-engineer](esp32-ble-beacon-engineer/SKILL.md) | Designs NimBLE advertising, manufacturer data PDUs, bounded advertising windows, and BLE stack teardown before deep sleep. |
 | [esp32-deep-sleep-engineer](esp32-deep-sleep-engineer/SKILL.md) | Designs deep-sleep configurations, ULP programs, and power budgets. |
 | [esp32-hardware-crypto-configurer](esp32-hardware-crypto-configurer/SKILL.md) | Configures hardware AES/SHA/RSA, NVS encryption, flash encryption, and secure boot. |
+| [esp32-ansi-monitor-engineer](esp32-ansi-monitor-engineer/SKILL.md) | Generates ANSI TUI serial monitor dashboards. Pattern A (continuous/DECSTBM scroll region) for always-on firmware; Pattern B (per-cycle snapshot/cursor-home overwrite) for duty-cycled deep-sleep firmware. Emits escape definitions, drawing functions, refresh timer wiring, and log-suppression discipline. |
 | [esp32-sdd-project-validator](esp32-sdd-project-validator/SKILL.md) | Validates any example folder against the permanent locked structure; reports PASS/FAIL for every check. |
 
 ## Installing Skills
@@ -39,7 +40,10 @@ In Claude Code, reference any skill by name:
 ```
 esp32-sdd-functional-spec-creator
   └─► esp32-sdd-full-project-generator
-        ├─► esp32-deep-sleep-engineer        (if sleep required)
+        ├─► esp32-deep-sleep-engineer        (if deep sleep required)
+        ├─► esp32-ble-beacon-engineer        (if BLE advertising required)
+        ├─► esp32-ws2812-led-engineer        (if WS2812 RGB LED required)
+        ├─► esp32-ansi-monitor-engineer      (if structured serial dashboard required)
         └─► esp32-hardware-crypto-configurer (if security required)
 ```
 

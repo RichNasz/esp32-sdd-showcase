@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-03-08 | Agent: Claude Code
+     Date: 2026-04-12 | Agent: Claude Code
      ================================================ -->
 
 # examples/
@@ -18,7 +18,7 @@ Start at example 1 and work forward — each example introduces new hardware fea
 | 2 | [deep-sleep-timer-node](deep-sleep-timer-node/) | Deep sleep, RTC timer wakeup, RTC_DATA_ATTR | Deep sleep + RTC memory | ★★☆☆☆ |
 | 3 | [deep-sleep-bme280-mqtt-sensor](deep-sleep-bme280-mqtt-sensor/) | I2C sensor, Wi-Fi STA, MQTT publish, duty-cycled sleep | I2C master + Wi-Fi + MQTT | ★★★☆☆ |
 | 4 | [hardware-aes-secure-storage](hardware-aes-secure-storage/) | Hardware AES-256, NVS encrypted blobs, secure API design | mbedTLS hardware AES accelerator | ★★★☆☆ |
-| 5 | [ble-beacon-deep-sleep](ble-beacon-deep-sleep/) | NimBLE advertising, duty-cycled BLE, ext0 wakeup | BLE + deep sleep + ext0 | ★★★★☆ |
+| 5 | [ble-beacon-deep-sleep](ble-beacon-deep-sleep/) | NimBLE advertising, duty-cycled BLE, WS2812 LED, ANSI dashboard | BLE + deep sleep + RMT | ★★★★☆ |
 | 6 | [secure-ota-https](secure-ota-https/) | HTTPS OTA, TLS cert pinning, rollback protection | esp_https_ota + bootloader rollback | ★★★★☆ |
 | 7 | [esp-now-low-power-mesh](esp-now-low-power-mesh/) | ESP-NOW peer comms, dual-role firmware, mesh patterns | ESP-NOW + power management | ★★★★☆ |
 | 8 | [capacitive-touch-wakeup](capacitive-touch-wakeup/) | Touch sensor calibration, touch wakeup from deep sleep | Capacitive touch peripheral | ★★★★★ |

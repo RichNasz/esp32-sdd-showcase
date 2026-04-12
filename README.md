@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-04-12 | Agent: Claude Code
+     Date: 2026-04-12 (updated) | Agent: Claude Code
      ================================================ -->
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -22,7 +22,7 @@ broader ESP32 community a reusable SDD toolkit they can fork and extend for thei
 ## Features
 
 - **8 progressive examples** spanning breathing LEDs through multi-year BLE beacons — every line of C generated from spec
-- **9 published agent skills** covering the full SDD pipeline: spec creation, code generation, WS2812 LED, BLE beaconing, deep sleep, hardware crypto, board specs, documentation, and validation
+- **10 published agent skills** covering the full SDD pipeline: spec creation, code generation, WS2812 LED, BLE beaconing, deep sleep, ANSI TUI dashboards, hardware crypto, board specs, documentation, and validation
 - **AI-generated board specs** from vendor datasheets for Adafruit, Seeed, Espressif, LilyGo, and more
 - **Strict human/AI separation** — generated files carry agent headers; only `specs/` is human-authored
 - **Full OSS governance** — Contributing guide, Code of Conduct, Security policy, and GitHub issue templates
@@ -71,14 +71,14 @@ All eight examples are fully generated from their spec files. They are ordered b
 | 2 | deep-sleep-timer-node | RTC timer wakeup with NVS-backed counter persistence | [examples/deep-sleep-timer-node](examples/deep-sleep-timer-node/) |
 | 3 | deep-sleep-bme280-mqtt-sensor | Duty-cycled IoT sensor node: BME280 → Wi-Fi STA → MQTT publish | [examples/deep-sleep-bme280-mqtt-sensor](examples/deep-sleep-bme280-mqtt-sensor/) |
 | 4 | hardware-aes-secure-storage | AES-256 hardware crypto accelerator with NVS encrypted blob storage | [examples/hardware-aes-secure-storage](examples/hardware-aes-secure-storage/) |
-| 5 | ble-beacon-deep-sleep | Duty-cycled NimBLE advertising with ext0 GPIO wakeup for multi-year battery life | [examples/ble-beacon-deep-sleep](examples/ble-beacon-deep-sleep/) |
+| 5 | ble-beacon-deep-sleep | Duty-cycled NimBLE beacon with WS2812/GPIO LED, ANSI dashboard, and multi-year battery life | [examples/ble-beacon-deep-sleep](examples/ble-beacon-deep-sleep/) |
 | 6 | secure-ota-https | HTTPS OTA with TLS certificate pinning and automatic rollback on failure | [examples/secure-ota-https](examples/secure-ota-https/) |
 | 7 | esp-now-low-power-mesh | Wi-Fi-free ESP-NOW peer mesh with dual-role firmware and power management | [examples/esp-now-low-power-mesh](examples/esp-now-low-power-mesh/) |
 | 8 | capacitive-touch-wakeup | Capacitive touch sensor calibration and touch wakeup from deep sleep | [examples/capacitive-touch-wakeup](examples/capacitive-touch-wakeup/) |
 
 ## Skills
 
-Nine agent skills implement the complete SDD pipeline. Invoke any skill in Claude Code by name.
+Ten agent skills implement the complete SDD pipeline. Invoke any skill in Claude Code by name.
 
 | Skill | Purpose |
 |---|---|
@@ -90,6 +90,7 @@ Nine agent skills implement the complete SDD pipeline. Invoke any skill in Claud
 | [esp32-ble-beacon-engineer](skills/esp32-ble-beacon-engineer/SKILL.md) | Designs NimBLE advertising, manufacturer data PDUs, bounded advertising windows, and BLE teardown before deep sleep |
 | [esp32-deep-sleep-engineer](skills/esp32-deep-sleep-engineer/SKILL.md) | Designs deep-sleep configurations, ULP programs, and power budgets |
 | [esp32-hardware-crypto-configurer](skills/esp32-hardware-crypto-configurer/SKILL.md) | Configures hardware AES/SHA/RSA, NVS encryption, flash encryption, and secure boot |
+| [esp32-ansi-monitor-engineer](skills/esp32-ansi-monitor-engineer/SKILL.md) | Generates ANSI TUI serial monitor dashboards — Pattern A (continuous/scroll region) for always-on firmware; Pattern B (per-cycle snapshot) for duty-cycled firmware |
 | [esp32-sdd-project-validator](skills/esp32-sdd-project-validator/SKILL.md) | Validates any example folder against the permanent locked structure; reports PASS/FAIL |
 
 ## Full Documentation

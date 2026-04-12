@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-02-22 | Agent: Claude Code
+     Date: 2026-04-12 | Agent: Claude Code
      ================================================ -->
 
 # Using With AI Agents
@@ -55,8 +55,11 @@ Claude Code loads the skill's `SKILL.md` workflow and follows it step by step.
 | `esp32-sdd-functional-spec-creator` | Guides creation of a new `FunctionalSpec.md` |
 | `esp32-sdd-full-project-generator` | Generates a complete ESP-IDF project from specs |
 | `esp32-board-spec-generator` | Produces board specs from vendor datasheets |
+| `esp32-ws2812-led-engineer` | Generates WS2812B RMT driver, Kconfig symbols, sdkconfig fragments for addressable RGB LEDs |
+| `esp32-ble-beacon-engineer` | Designs NimBLE advertising, manufacturer data PDUs, and BLE teardown before deep sleep |
 | `esp32-deep-sleep-engineer` | Designs sleep configurations and power budgets |
 | `esp32-hardware-crypto-configurer` | Configures hardware AES, secure boot, flash encryption |
+| `esp32-ansi-monitor-engineer` | Generates ANSI TUI serial dashboards (Pattern A: continuous; Pattern B: per-cycle snapshot) |
 | `esp32-sdd-documentation-generator` | Regenerates all documentation from specs |
 | `esp32-sdd-project-validator` | Validates any example folder against the permanent locked structure |
 
