@@ -1,7 +1,7 @@
 /* ================================================
    AGENT-GENERATED — DO NOT EDIT BY HAND
    Generated from specs/ using esp32-sdd-full-project-generator skill
-   Date: 2026-04-12 | Agent: Claude Code
+   Date: 2026-04-12 | Agent: Claude Code (updated 2026-04-12)
    ================================================ */
 
 #include <stdio.h>
@@ -39,8 +39,18 @@ static const char *TAG = "blinky";
 #define WS2812_T1H_TICKS  9   /* 900 ns high for a 1-bit */
 #define WS2812_T1L_TICKS  3   /* 300 ns low  for a 1-bit */
 
-/* Cap brightness at 64/255 — bare onboard LEDs are very intense at full power. */
-#define WS2812_MAX_BRIGHT  64
+/* Color table — each entry at max brightness (64/255) to protect eyes on bare LEDs.
+ * The active color advances by one entry at the start of each new breath cycle. */
+static const struct { uint8_t r, g, b; } s_colors[] = {
+    {64,  0,  0},  /* red     */
+    { 0, 64,  0},  /* green   */
+    { 0,  0, 64},  /* blue    */
+    { 0, 64, 64},  /* cyan    */
+    {64,  0, 64},  /* magenta */
+    {64, 32,  0},  /* amber   */
+};
+#define WS2812_NUM_COLORS  (sizeof(s_colors) / sizeof(s_colors[0]))
+static int s_color_idx = 0;
 
 #define WS2812_FADE_STEPS  100          /* steps per ramp                       */
 #define WS2812_STEP_MS     20           /* 100 × 20 ms = 2 s per ramp           */
@@ -149,18 +159,28 @@ void app_main(void)
     ESP_LOGI(TAG, "Starting WS2812 breathing loop");
 
     while (1) {
-        /* Ramp up: dark → WS2812_MAX_BRIGHT over WS2812_FADE_STEPS × WS2812_STEP_MS */
+        uint8_t r = s_colors[s_color_idx].r;
+        uint8_t g = s_colors[s_color_idx].g;
+        uint8_t b = s_colors[s_color_idx].b;
+        ESP_LOGI(TAG, "Cycle color %d/%d  r=%d g=%d b=%d",
+                 s_color_idx + 1, (int)WS2812_NUM_COLORS, r, g, b);
+
+        /* Ramp up: dark -> color at full brightness */
         for (int i = 0; i <= WS2812_FADE_STEPS; i++) {
-            uint8_t v = (uint8_t)((i * WS2812_MAX_BRIGHT) / WS2812_FADE_STEPS);
-            ws2812_write(v, v, v);
+            ws2812_write((uint8_t)((r * i) / WS2812_FADE_STEPS),
+                         (uint8_t)((g * i) / WS2812_FADE_STEPS),
+                         (uint8_t)((b * i) / WS2812_FADE_STEPS));
             vTaskDelay(pdMS_TO_TICKS(WS2812_STEP_MS));
         }
-        /* Ramp down: WS2812_MAX_BRIGHT → dark */
+        /* Ramp down: color at full brightness -> dark */
         for (int i = WS2812_FADE_STEPS; i >= 0; i--) {
-            uint8_t v = (uint8_t)((i * WS2812_MAX_BRIGHT) / WS2812_FADE_STEPS);
-            ws2812_write(v, v, v);
+            ws2812_write((uint8_t)((r * i) / WS2812_FADE_STEPS),
+                         (uint8_t)((g * i) / WS2812_FADE_STEPS),
+                         (uint8_t)((b * i) / WS2812_FADE_STEPS));
             vTaskDelay(pdMS_TO_TICKS(WS2812_STEP_MS));
         }
+
+        s_color_idx = (s_color_idx + 1) % (int)WS2812_NUM_COLORS;
     }
 
 #else

@@ -130,9 +130,13 @@ idf.py build && idf.py flash
 I (317) blinky: Blinky — WS2812 RGB LED, GPIO 8, breathing period 4000 ms
 I (318) blinky: WS2812 RMT channel init on GPIO 8 (10 MHz, GRB order, max brightness 64/255)
 I (320) blinky: Starting WS2812 breathing loop
+I (321) blinky: Cycle color 1/6  r=64 g=0 b=0
+I (4323) blinky: Cycle color 2/6  r=0 g=64 b=0
+I (8325) blinky: Cycle color 3/6  r=0 g=0 b=64
 ```
 
-The RGB LED breathes white (dim → bright → dim) continuously.
+The RGB LED breathes through a color sequence — red, green, blue, cyan, magenta, amber —
+advancing to the next color at the start of each new 4-second breath cycle.
 
 ### Adafruit HUZZAH32 (active HIGH, GPIO 13)
 
@@ -159,6 +163,9 @@ I (4328) blinky: Fade up → duty 0
 - **WS2812 via RMT**: `rmt_new_tx_channel` + `rmt_new_bytes_encoder` drives the 800 kHz NRZ
   protocol; GRB byte order; 10 MHz RMT resolution (1 tick = 100 ns); brightness capped at
   64/255 to protect eyes from bare-LED intensity
+- **Per-cycle color advancement**: `s_colors[]` table of 6 entries (red, green, blue, cyan,
+  magenta, amber); `s_color_idx` increments modulo 6 after each complete up+down cycle;
+  each step scales all three channels by the brightness fraction `(channel * i) / STEPS`
 - **LEDC fade callback**: `ledc_fade_func_install()` + IRAM-resident fade-done ISR — interrupt-
   driven fading eliminates CPU involvement during transitions
 - **`EXAMPLE_LED_WS2812` Kconfig bool**: compile-time code path selector — all board differences

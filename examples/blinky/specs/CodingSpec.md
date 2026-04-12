@@ -50,9 +50,14 @@ When `CONFIG_EXAMPLE_LED_WS2812=y`:
   - Bit-1: T1H = 9 ticks (900 ns) HIGH, T1L = 3 ticks (300 ns) LOW
 - GRB byte order (not RGB). `ws2812_write(r, g, b)` must pack as `{g, r, b}`.
 - After each RMT frame: call `rmt_tx_wait_all_done(chan, pdMS_TO_TICKS(100))` before next write.
-- Breathing loop: step R=G=B from 0→255 (2 s up) then 255→0 (2 s down), 256 steps per ramp,
-  `vTaskDelay(pdMS_TO_TICKS(2000 / 256))` per step. Loop runs forever in app_main.
-- Cap white brightness at 64/255 max to avoid eye-blasting intensity on a bare LED.
+- Breathing loop: define a fixed color table of `{r, g, b}` entries at max brightness (64).
+  Track a `color_idx` that advances by 1 modulo the table length after each complete up+down
+  cycle. Each brightness step scales all three channels by the ramp fraction:
+  `ws2812_write((r*i)/STEPS, (g*i)/STEPS, (b*i)/STEPS)`.
+  Color sequence: red (64,0,0), green (0,64,0), blue (0,0,64),
+  cyan (0,64,64), magenta (64,0,64), amber (64,32,0).
+- Cap channel values at 64/255 max (already encoded in the color table) to avoid eye-blasting
+  intensity on a bare LED.
 - Log "WS2812 RMT channel init on GPIO %d" at INFO level before the loop.
 
 ## Key Constraints

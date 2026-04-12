@@ -20,7 +20,9 @@ Note: Seeed XIAO ESP32-C6 is also compatible but requires manual menuconfig over
 - Breathing period: 4 seconds (2 s fade-up, 2 s fade-down), continuous.
 - For simple GPIO LED boards: use hardware PWM (ESP-IDF `ledc` driver) — no busy-wait loops.
 - For WS2812 RGB LED boards (DevKitC): use RMT peripheral to drive 800 kHz NRZ protocol;
-  breathing is implemented as white RGB brightness cycling (R=G=B) 0→255→0 in a software loop.
+  breathing is implemented as RGB brightness cycling in a software loop; the color advances
+  through a fixed sequence (red, green, blue, cyan, magenta, amber) at the start of each new
+  breath cycle.
 - Board selection is driven by per-target `sdkconfig.defaults.<target>` files that
   automatically inject the correct LED GPIO, LED type, and console config when the
   user runs `idf.py set-target <chip>`. No menuconfig step is required for listed boards.
