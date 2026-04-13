@@ -1,7 +1,7 @@
 # ================================================
 # AGENT-GENERATED — DO NOT EDIT BY HAND
 # Generated from specs/ using esp32-sdd-full-project-generator skill
-# Date: 2026-03-11 | Agent: Claude Code
+# Date: 2026-04-12 | Agent: Claude Code
 # ================================================
 
 idf_component_register(
@@ -17,6 +17,7 @@ idf_component_register(
         esp_https_ota
         app_update
         driver
+        esp_rom
 )
 
 # Embed server CA certificate at build time.

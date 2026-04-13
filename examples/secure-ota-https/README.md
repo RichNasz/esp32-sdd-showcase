@@ -1,7 +1,7 @@
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-03-13 | Agent: Claude Code
+     Date: 2026-04-12 | Agent: Claude Code
      ================================================ -->
 
 # Secure OTA via HTTPS — Button-Triggered Partition Flip Demo
@@ -71,25 +71,54 @@ project: **File → Open Folder… → select `examples/secure-ota-https/`**.
 
 ## Expected Serial Output
 
+Early boot (before dashboard initialises — plain ESP-IDF logs):
+
 ```
 I (312) ota_main: Rollback check: OTA image state = 3 (already confirmed)
 I (315) ota_main: Rollback check: app marked valid
 I (317) ota_main: Running from ota_0 — left LED ON
-I (2401) ota_main: Wi-Fi connect: SSID=MyNetwork ...
-I (4823) ota_main: Wi-Fi connected — IP: 192.168.1.42
-I (4826) ota_main: Ready — press button (GPIO7) to trigger OTA from: https://...
+```
 
---- (button pressed) ---
+After `draw_dashboard(true)` clears the screen and suppresses logs, the terminal
+shows a fixed 7-row dashboard that refreshes in-place throughout the OTA lifecycle:
 
-I (11044) ota_main: Button pressed — starting OTA download
-I (11489) ota_main: OTA image size: 892416 bytes
-I (12103) ota_main: OTA progress: 10% (89241 / 892416 bytes)
-...
-I (19441) ota_main: OTA success — new image written to inactive partition
-I (19442) ota_main: OTA complete — rebooting into new firmware
+```
+  OTA MONITOR   ESP32-SDD
+Board: YEJMKJ ESP32-S3-DevKitC-1-N16R8   Partition: ota_0
+Server: https://raw.githubusercontent.com/RichNasz/esp32-sdd-showcase/...
+Wi-Fi:  CONNECTING (4 s)
+Status: WIFI_CONNECTING
+Progress: —
+----------------------------------------
+```
 
---- (reboot) ---
+Once Wi-Fi connects and the button is pressed:
 
+```
+  OTA MONITOR   ESP32-SDD
+Board: YEJMKJ ESP32-S3-DevKitC-1-N16R8   Partition: ota_0
+Server: https://raw.githubusercontent.com/RichNasz/esp32-sdd-showcase/...
+Wi-Fi:  CONNECTED (192.168.1.42)
+Status: DOWNLOADING
+Progress: [============        ]  61%  545259 / 892416 B
+----------------------------------------
+```
+
+On success, the final dashboard state before reboot:
+
+```
+  OTA MONITOR   ESP32-SDD
+Board: YEJMKJ ESP32-S3-DevKitC-1-N16R8   Partition: ota_0
+Server: https://raw.githubusercontent.com/RichNasz/esp32-sdd-showcase/...
+Wi-Fi:  CONNECTED (192.168.1.42)
+Status: COMPLETE
+Progress: [====================] 100%  892416 / 892416 B
+----------------------------------------
+```
+
+After reboot, early boot logs again (dashboard not yet active):
+
+```
 I (312) ota_main: Rollback check: OTA image state = 2 (PENDING_VERIFY — marking valid now)
 I (315) ota_main: Rollback check: app marked valid
 I (317) ota_main: Running from ota_1 — right LED ON
@@ -98,7 +127,8 @@ I (317) ota_main: Running from ota_1 — right LED ON
 ## Key Concepts
 
 - `esp_https_ota_begin` / `esp_https_ota_perform` / `esp_https_ota_finish` — advanced OTA
-  API for per-chunk progress logging while keeping the download in a single component
+  API for per-chunk progress updates; each `perform` call returns
+  `ESP_ERR_HTTPS_OTA_IN_PROGRESS` until the transfer is complete
 - `esp_ota_mark_app_valid_cancel_rollback()` — called unconditionally at startup before any
   user logic; prevents the bootloader from rolling back on the next reboot
 - `esp_ota_get_running_partition()` + `esp_ota_get_state_partition()` — detect which OTA
@@ -106,6 +136,11 @@ I (317) ota_main: Running from ota_1 — right LED ON
 - Embedded server CA certificate via `target_add_binary_data` in `main/CMakeLists.txt`
 - Dual OTA partition table (`partitions.csv`) with two 1.5 MB app slots
 - `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y` in `sdkconfig.defaults`
+- ANSI TUI dashboard — 7-row fixed-layout cursor-home+overwrite pattern; `draw_dashboard(true)`
+  clears the screen, hides the cursor, and permanently suppresses ESP-IDF logs;
+  all subsequent output is via `esp_rom_printf()` only
+- Wi-Fi polling loop — replaces a single blocking `xEventGroupWaitBits` with 500 ms iterations
+  so the dashboard can show elapsed connect time each tick
 - Separate FreeRTOS task for LED blinking because `app_main` blocks during the OTA transfer
 - Binary semaphore driven from GPIO ISR for button edge detection without polling
 
