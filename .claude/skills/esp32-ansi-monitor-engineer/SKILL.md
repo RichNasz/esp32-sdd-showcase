@@ -1,11 +1,13 @@
 ---
 name: esp32-ansi-monitor-engineer
-description: Generates ANSI TUI dashboard code for ESP32 serial monitor output. Supports two
-  patterns: Pattern A (continuous dashboard with DECSTBM scroll region, for always-on firmware)
-  and Pattern B (per-cycle snapshot with cursor-home + overwrite, for duty-cycled/deep-sleep
-  firmware). Emits escape definitions, drawing functions, refresh timer wiring, log suppression,
-  and task notification discipline.
-version: "1.0.0"
+description: Generates ANSI TUI dashboard code for ESP32 serial monitor output. Supports three
+  patterns: Pattern A (continuous dashboard with DECSTBM scroll region, for always-on firmware
+  with a live event stream), Pattern B (per-cycle snapshot with periodic timer, for duty-cycled
+  or deep-sleep firmware), and Pattern B-Lifecycle (sequential pipeline with lifecycle-driven
+  redraws, for always-on firmware with discrete sequential phases and no continuous event stream).
+  Emits escape definitions, drawing functions, refresh wiring, log suppression, and task
+  notification discipline.
+version: "1.1.0"
 author: Richard Naszcyniec
 keywords: sdd, esp32, ansi, tui, terminal, dashboard, monitor, serial, esp_rom_printf
 ---
@@ -13,7 +15,7 @@ keywords: sdd, esp32, ansi, tui, terminal, dashboard, monitor, serial, esp_rom_p
 <!-- ================================================
      AGENT-GENERATED — DO NOT EDIT BY HAND
      Generated from specs/ using esp32-sdd-documentation-generator skill
-     Date: 2026-04-12 | Agent: Claude Code
+     Date: 2026-04-13 | Agent: Claude Code
      ================================================ -->
 
 # ESP32 ANSI Monitor Engineer
@@ -29,19 +31,34 @@ sub-workflow of `esp32-sdd-full-project-generator` when the CodingSpec reference
 Choose one pattern based on the firmware's execution model:
 
 **Pattern A — Continuous Dashboard (scroll region)**
-- Firmware runs continuously with a live event stream (ESP-NOW gateway, WiFi server, MQTT broker).
-- New events arrive in real time and must appear as scrolling lines below a pinned header.
+- Firmware runs indefinitely with a real-time incoming event stream (ESP-NOW gateway, Wi-Fi
+  server, MQTT broker).
+- New events must appear as scrolling lines below a pinned header.
 - Use DECSTBM scroll region (`ESC[top;botr`) to pin header rows; new event lines scroll below.
 - Reference example: `examples/esp-now-low-power-mesh/main/gateway.c`
 
-**Pattern B — Per-Cycle Snapshot (cursor-home + overwrite)**
+**Pattern B — Per-Cycle Snapshot (cursor-home + overwrite, timer-driven)**
 - Firmware is duty-cycled: discrete active windows separated by deep sleep or idle periods.
-- Each cycle produces a fixed set of data fields; no continuous scrolling event log needed.
-- Use cursor-home (`ESC[H`) + overwrite on each refresh tick; screen freezes during sleep.
+- Each wake cycle produces a fixed set of data fields; screen freezes during sleep.
+- A periodic `esp_timer` (250 ms) drives redraws within each active window via task notification.
 - Reference example: `examples/ble-beacon-deep-sleep/main/main.c`
 
-**Decision rule**: If the firmware enters deep sleep between cycles → Pattern B. If the firmware
-runs indefinitely and must display a continuous stream of incoming events → Pattern A.
+**Pattern B-Lifecycle — Sequential Pipeline (cursor-home + overwrite, lifecycle-driven)**
+- Firmware runs continuously but progresses through discrete sequential phases
+  (e.g. `BOOTING → CONNECTING → READY → DOWNLOADING → COMPLETE`).
+- No continuous event stream; no deep sleep. Phase transitions naturally drive redraws.
+- No periodic `esp_timer` needed — each phase calls `draw_dashboard(false)` at appropriate points.
+- For blocking operations within a phase, use polling loop substitution or threshold-based redraws
+  (see Pattern B-Lifecycle Workflow below).
+- Reference example: `examples/secure-ota-https/main/main.c`
+
+**Decision rule:**
+
+| Firmware model | Pattern |
+|---|---|
+| Always-on, real-time event stream (events arrive continuously) | **A** |
+| Duty-cycled with deep sleep between active windows | **B** |
+| Always-on, sequential discrete phases, fixed field set, no streaming events | **B-Lifecycle** |
 
 ## Workflow (follow exactly)
 
@@ -101,29 +118,56 @@ MANDATORY: First read and follow `shared-specs/AIGenLessonsLearned.md` before do
    Typical fields: MAC address buffer, advertising status enum, cycle start timestamp,
    main task handle. The drawing function reads these; callbacks only write them.
 
-4. **Implement the drawing function(s)** according to the chosen pattern (see Pattern A and
-   Pattern B workflows below). Adhere strictly to the output discipline rules in step 6.
+4. **Implement the drawing function(s)** according to the chosen pattern (see Pattern A,
+   Pattern B, and Pattern B-Lifecycle workflows below). Adhere strictly to the output
+   discipline rules in step 6.
 
-5. **Wire up the refresh timer and task notification**:
+5. **Wire up the refresh mechanism** — the approach differs by pattern:
+
+   **Pattern A and Pattern B (timer-driven):**
    - Create a periodic `esp_timer` at the refresh interval specified in the CodingSpec
      (default: 250 ms if not specified).
    - Timer callback body: `xTaskNotifyGive(s_main_task_handle)` and nothing else. No screen
      output in callbacks.
    - Store `s_main_task_handle = xTaskGetCurrentTaskHandle()` before creating the timer.
 
+   **Pattern B-Lifecycle (lifecycle-driven):**
+   - No `esp_timer` is needed. Each phase transition calls `draw_dashboard(false)` directly.
+   - `s_main_task_handle` is not needed (there is no timer callback to wake the main task).
+   - For blocking operations that must show live progress within a phase, use polling loop
+     substitution or threshold-based redraws — see Pattern B-Lifecycle Workflow below.
+
 6. **Apply the mandatory output discipline rules** — add these as source comments where the
    rules apply:
+
    - All post-init terminal output via `esp_rom_printf()` only — never `printf`, `fprintf`,
      or `ESP_LOG*` macros after the dashboard is drawn.
-   - `snprintf` to a stack buffer first, then `esp_rom_printf("%s", buf)`. This avoids ROM
-     printf format specifier limitations and keeps output atomic.
+   - `snprintf` to a stack buffer first (`char buf[256]`), then `esp_rom_printf("%s", buf)`.
+     Use 256 bytes as the default buffer size — ANSI escape sequences add invisible bytes
+     that do not appear as terminal output but do count toward the buffer. A 128-byte buffer
+     can overflow when a single row contains multiple colour/reset sequences plus a long
+     string argument.
    - Call `esp_log_level_set("*", ESP_LOG_NONE)` immediately after clearing the screen and
      drawing the first frame. After this call, ESP-IDF log suppression is permanent for the
      rest of the wake cycle. Error conditions must be reflected in a `Status` field in the
      dashboard, not via `ESP_LOGE`.
    - Only the task that owns the screen writes to the terminal. In single-task firmware
-     (Pattern B), only `app_main` writes. In multi-task firmware (Pattern A), designate one
-     task as screen owner. All other tasks only call `xTaskNotifyGive()` or set atomic flags.
+     (Pattern B, Pattern B-Lifecycle), only `app_main` writes. In multi-task firmware
+     (Pattern A), designate one task as screen owner. All other tasks only call
+     `xTaskNotifyGive()` or set atomic flags.
+   - **Event handlers and ISRs that fire after `draw_dashboard(true)` must not use
+     `ESP_LOGW`, `ESP_LOGE`, or any `ESP_LOG*` macro — even for error conditions.** Log
+     suppression is permanent once activated. Instead: set a status variable
+     (e.g. `s_phase = PHASE_ERROR`) and populate an error reason buffer before signaling
+     the main task. The main task reflects the error in the dashboard Status field.
+
+     Safe for callbacks/handlers to write after suppression:
+     - `volatile` enum or bool status flags
+     - Fixed-length char buffers, provided they are written *before* the synchronization
+       primitive is signaled (the signal acts as a memory barrier for the reader)
+     - `xEventGroupSetBits()`, `xTaskNotifyGive()`, `xSemaphoreGiveFromISR()`
+
+     Unsafe after suppression: `esp_rom_printf()`, any `ESP_LOG*` macro, `printf`, `fprintf`.
 
 7. **Add `esp_rom_sys.h` include**. Add it with the other system includes:
 
@@ -202,7 +246,7 @@ If new event: print_event_line()
 
 ---
 
-## Pattern B Workflow — Per-Cycle Snapshot (cursor-home + overwrite)
+## Pattern B Workflow — Per-Cycle Snapshot (cursor-home + overwrite, timer-driven)
 
 Use for duty-cycled firmware (deep sleep between active windows).
 
@@ -237,7 +281,7 @@ static volatile bool     s_adv_done;      /* set by adv_timer_cb */
 static TaskHandle_t      s_main_task_handle;
 ```
 
-### Progress bar computation
+### Progress bar computation (time-based, for duty-cycled windows)
 
 ```
 elapsed_us  = esp_timer_get_time() - s_cycle_start_us
@@ -290,6 +334,185 @@ ble_gap_adv_stop();
 s_adv_status = ADV_STATUS_SLEEPING;
 s_adv_done   = true;
 xTaskNotifyGive(s_main_task_handle);
+```
+
+---
+
+## Pattern B-Lifecycle Workflow — Sequential Pipeline (lifecycle-driven)
+
+Use for always-on firmware that progresses through discrete sequential phases with a fixed
+field set. No deep sleep. No continuous event stream. No periodic `esp_timer`.
+
+Examples: OTA firmware update pipeline, Wi-Fi provisioning wizard, factory test sequence,
+boot health check.
+
+### draw_dashboard(bool initial) — same signature as Pattern B
+
+Identical structure to Pattern B: `initial = true` clears screen and suppresses logs;
+all calls do `ANSI_HOME` + overwrite each row + `ANSI_ERASE_EOL`. The difference is in
+*when* and *how often* it is called — lifecycle events rather than a timer.
+
+### Module-scope state
+
+Use a status enum covering all pipeline phases, plus supporting fields:
+
+```c
+typedef enum {
+    PHASE_BOOTING,
+    PHASE_CONNECTING,     /* or any phase name matching your pipeline */
+    PHASE_READY,
+    PHASE_WORKING,
+    PHASE_COMPLETE,
+    PHASE_ERROR,
+} phase_t;
+
+static volatile phase_t s_phase        = PHASE_BOOTING;
+static char   s_error_reason[64]       = "";   /* set before entering PHASE_ERROR */
+static int    s_elapsed_ms             = 0;    /* for polling loop elapsed time display */
+```
+
+### Refresh strategy: lifecycle-driven redraws
+
+Each phase calls `draw_dashboard(false)` when state changes. For blocking operations that
+must show live progress, use one of two sub-patterns:
+
+#### Sub-pattern 1: Polling loop substitution
+
+Replaces a single blocking wait (event group, semaphore, task notification) with a loop
+of short-timeout iterations. Each iteration that times out (no event yet) updates elapsed
+time and redraws the dashboard:
+
+```c
+/* Replace: xEventGroupWaitBits(group, BITS, F, F, pdMS_TO_TICKS(TIMEOUT_MS)) */
+/* With: */
+s_phase      = PHASE_CONNECTING;
+s_elapsed_ms = 0;
+draw_dashboard(false);
+
+int         total_ms = 0;
+EventBits_t bits     = 0;
+while (total_ms < TIMEOUT_MS) {
+    bits = xEventGroupWaitBits(group, BITS, pdFALSE, pdFALSE, pdMS_TO_TICKS(500));
+    if (bits & TARGET_BITS) break;
+    s_elapsed_ms += 500;
+    total_ms     += 500;
+    draw_dashboard(false);   /* dashboard shows "CONNECTING (4 s)" updating each tick */
+}
+```
+
+Use when: a blocking wait can be split into short iterations without changing protocol
+semantics (Wi-Fi association, HTTP response wait, button press with timeout).
+
+The event handler that sets the bits must not call `draw_dashboard()` — it only calls
+`xEventGroupSetBits()` and writes to state variables (see output discipline rule in step 6).
+
+#### Sub-pattern 2: Threshold-based redraws
+
+Inside a tight inner loop that already runs continuously (HTTPS chunked download, audio
+decode, etc.), gate `draw_dashboard(false)` on a minimum progress increment to avoid
+saturating the UART:
+
+```c
+int last_drawn = -1024;  /* negative initial value forces first draw immediately */
+while (inner_loop_running) {
+    /* perform one unit of work */
+    s_bytes_read = get_current_progress();
+    if (s_bytes_read - last_drawn >= 1024) {
+        draw_dashboard(false);
+        last_drawn = s_bytes_read;
+    }
+}
+```
+
+Use when: the inner loop runs faster than the UART can render frames (> ~4 frames/second
+at 115200 baud). One dashboard refresh per 1 KB of progress is a reasonable default for
+HTTPS OTA; tune the threshold based on typical transfer speeds and image size.
+
+### Progress bar computation (byte-count-based, for download/transfer phases)
+
+```c
+/* Module-scope state */
+static int s_total_bytes    = 0;   /* from Content-Length or equivalent; 0 if unknown */
+static int s_received_bytes = 0;   /* updated in the inner loop */
+
+/* In draw_dashboard(), progress row: */
+if (s_phase == PHASE_WORKING && s_total_bytes > 0) {
+    int pct  = (s_received_bytes * 100) / s_total_bytes;
+    int fill = pct / 5;   /* 20-char bar: 1 char per 5 % */
+    char bar[21];
+    for (int i = 0; i < 20; i++) bar[i] = (i < fill) ? '=' : ' ';
+    bar[20] = '\0';
+    snprintf(buf, sizeof(buf),
+             C_DIM "Progress:" C_RESET " [%s] %3d%%  %d / %d B" ANSI_ERASE_EOL "\r\n",
+             bar, pct, s_received_bytes, s_total_bytes);
+} else if (s_phase == PHASE_WORKING) {
+    /* Total size unknown — show bytes received without percentage */
+    snprintf(buf, sizeof(buf),
+             C_DIM "Progress:" C_RESET " %d B received" ANSI_ERASE_EOL "\r\n",
+             s_received_bytes);
+} else {
+    snprintf(buf, sizeof(buf),
+             C_DIM "Progress:" C_RESET " \xe2\x80\x94" ANSI_ERASE_EOL "\r\n");
+}
+esp_rom_printf("%s", buf);
+```
+
+### Pre-populating state before draw_dashboard(true)
+
+If the dashboard's first frame must show information that is only available after hardware
+init (e.g. which OTA partition is active, a hardware version string), populate those state
+variables *before* calling `draw_dashboard(true)`. `draw_dashboard(true)` reads whatever
+is in the state variables when it renders the first frame — order matters:
+
+```c
+/* Correct order: */
+led_set_status();        /* sets s_partition_name = "ota_0" */
+draw_dashboard(true);    /* first frame shows Partition: ota_0 correctly */
+
+/* Wrong order: */
+draw_dashboard(true);    /* first frame shows Partition: unknown */
+led_set_status();        /* too late — dashboard already drew */
+```
+
+### app_main structure (Pattern B-Lifecycle)
+
+```c
+void app_main(void) {
+    /* Phase 0: hardware init — ESP_LOGx still active */
+    hw_init();
+    rollback_check();       /* or any pre-dashboard logic; use ESP_LOGI freely here */
+    populate_state();       /* set s_partition_name, s_version, etc. */
+
+    draw_dashboard(true);   /* clears screen, suppresses logs — ESP_LOGx disabled from here */
+
+    /* Phase 1: blocking operation with polling loop substitution */
+    if (blocking_connect() != OK) {
+        /* s_phase already set to PHASE_ERROR inside blocking_connect() */
+        while (true) { error_pattern(); vTaskDelay(pdMS_TO_TICKS(2000)); }
+    }
+
+    s_phase = PHASE_READY;
+    draw_dashboard(false);
+
+    /* Phase 2: wait for trigger */
+    xSemaphoreTake(s_trigger_sem, portMAX_DELAY);
+
+    /* Phase 3: long operation with threshold-based redraws */
+    s_phase = PHASE_WORKING;
+    draw_dashboard(false);
+    esp_err_t err = run_long_operation();   /* calls draw_dashboard(false) internally */
+
+    /* Phase 4: final state */
+    if (err == ESP_OK) {
+        s_phase = PHASE_COMPLETE;
+        draw_dashboard(false);
+        esp_restart();
+    }
+    snprintf(s_error_reason, sizeof(s_error_reason), "%s", esp_err_to_name(err));
+    s_phase = PHASE_ERROR;
+    draw_dashboard(false);
+    while (true) { error_pattern(); vTaskDelay(pdMS_TO_TICKS(2000)); }
+}
 ```
 
 ---
