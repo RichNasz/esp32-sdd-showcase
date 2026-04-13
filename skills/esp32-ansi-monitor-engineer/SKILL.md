@@ -22,9 +22,31 @@ keywords: sdd, esp32, ansi, tui, terminal, dashboard, monitor, serial, esp_rom_p
 
 ## When to use
 
-Any example where the serial monitor output should be a structured terminal dashboard rather than
-plain `ESP_LOGI` lines. Invoke standalone to add a dashboard to an existing example, or as a
-sub-workflow of `esp32-sdd-full-project-generator` when the CodingSpec references this skill.
+Any **ESP32 / ESP-IDF** example where the UART serial terminal output — viewed via
+`idf.py monitor` — should be a structured terminal dashboard rather than plain `ESP_LOGI` lines.
+Invoke standalone to add a dashboard to an existing example, or as a sub-workflow of
+`esp32-sdd-full-project-generator` when the CodingSpec references this skill.
+
+### Scope
+
+This skill is intentionally narrow. It exists solely to improve the **ESP32 UART serial monitor
+experience** for developers using `idf.py monitor` or a compatible serial terminal. Every design
+decision in this skill — escape sequence selection, `esp_rom_printf()` discipline, log suppression
+timing, pattern selection — is made in the context of ESP-IDF firmware running on an ESP32-family
+chip and outputting to a UART-backed terminal at 115200 baud.
+
+**This skill does NOT cover and must not drift into:**
+- Non-ESP32 or non-ESP-IDF platforms (Arduino, Zephyr, bare-metal ARM, etc.)
+- Graphical displays: OLED, LCD, TFT, e-ink (use a display driver component instead)
+- Network or cloud monitoring: MQTT dashboards, HTTP status pages, Grafana, etc.
+- Bluetooth or BLE-based monitoring UIs
+- Web serial or browser-based terminal interfaces
+- General-purpose embedded TUI frameworks independent of ESP-IDF
+- Production telemetry or logging pipelines (this is a developer-facing debug interface only)
+
+If a requirement falls outside this scope, it belongs in a different skill or component.
+Resist the temptation to extend this skill to handle adjacent monitoring needs — that path leads
+to a general-purpose tool that is harder to reason about and harder to apply correctly.
 
 ## Pattern Selection
 
