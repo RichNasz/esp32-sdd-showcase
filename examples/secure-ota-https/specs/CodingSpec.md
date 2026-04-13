@@ -183,52 +183,62 @@ the complete command-line workflow for building a new binary and making it avail
 devices via OTA. The target audience is someone who has already flashed a device and now
 wants to update the firmware the OTA server serves.
 
-The section must cover the following steps, presented as a numbered command-line workflow:
+The section must cover the following steps, presented as a numbered command-line workflow.
+Step order is critical: credentials must be secured in a persistent local file BEFORE
+sdkconfig is deleted, otherwise they are lost and must be re-entered.
 
-1. **Increment the app version** — open `sdkconfig.defaults` and bump `CONFIG_APP_PROJECT_VER`
-   (e.g. `"1.0.1"` → `"1.0.2"`). This makes the new build identifiable in the dashboard and
-   in the rollback state machine. Commit this change alongside the binary so the version in
-   the repo always matches the binary on disk.
-
-2. **Set Wi-Fi credentials** — ensure `sdkconfig` has real credentials (either via
-   `idf.py menuconfig` or a gitignored `sdkconfig.defaults.local`). The binary will be
-   flashed to devices that use these credentials to connect. See the "Setting Wi-Fi
-   Credentials" section for the safe approach.
-
-3. **Delete stale sdkconfig so sdkconfig.defaults is re-applied** — when `CONFIG_APP_PROJECT_VER`
-   changes in `sdkconfig.defaults`, the existing `sdkconfig` must be removed so the build
-   system re-reads the defaults file. Without this step the version bump has no effect.
-   Then rebuild:
+1. **Establish a persistent credentials file** — create `sdkconfig.defaults.local` (gitignored)
+   if it does not already exist. This file is the permanent credential store for this workflow;
+   once it exists, credentials survive all future clean builds and sdkconfig deletions.
    ```sh
-   cd examples/secure-ota-https
+   cat > sdkconfig.defaults.local << 'EOF'
+   CONFIG_OTA_WIFI_SSID="YourNetwork"
+   CONFIG_OTA_WIFI_PASSWORD="YourPassword"
+   EOF
+   ```
+   This step is a no-op on subsequent pushes — the file already exists.
+
+2. **Increment the app version** — open `sdkconfig.defaults` and bump `CONFIG_APP_PROJECT_VER`
+   (e.g. `"1.0.1"` → `"1.0.2"`). This makes the new build identifiable in the dashboard and
+   in the rollback state machine.
+
+3. **Delete stale sdkconfig** — sdkconfig must be deleted so the build system re-reads both
+   defaults files and picks up the new version. Deleting sdkconfig removes all locally-configured
+   values; that is safe here because step 1 ensures credentials are already in
+   `sdkconfig.defaults.local`. Never delete sdkconfig before step 1 is complete.
+   ```sh
    rm -f sdkconfig sdkconfig.old
-   idf.py menuconfig   # re-enter Wi-Fi credentials after sdkconfig is deleted
-   idf.py build
    ```
 
-4. **Copy the binary to the example root** — the OTA server URL points to
-   `examples/secure-ota-https/secure_ota_https.bin` in the repository root (tracked by git
-   via the `!secure_ota_https.bin` exception in `.gitignore`):
+4. **Build** using both defaults files:
+   ```sh
+   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.local" build
+   ```
+
+5. **Copy the binary to the example root** — tracked by git via the `!secure_ota_https.bin`
+   exception in `.gitignore`:
    ```sh
    cp build/secure_ota_https.bin .
    ```
 
-5. **Commit and push** — include both `sdkconfig.defaults` (version bump) and the binary:
+6. **Commit and push** — include both `sdkconfig.defaults` (version bump) and the binary:
    ```sh
    git add sdkconfig.defaults secure_ota_https.bin
    git commit -m "build(secure-ota-https): update OTA binary to v1.0.2"
    git push
    ```
    Within seconds of the push, GitHub raw content serves the new binary at the OTA URL.
-   Any device that triggers OTA will download and flash this version.
 
-6. **Verify** — open the GitHub raw URL in a browser and confirm the file size matches
-   the build output. The OTA client on the device will validate the binary signature and
+7. **Verify** — confirm the binary size matches the build output. The OTA client validates
    flash integrity before rebooting.
 
-The README must note that the binary is **not** a build artefact to be ignored — it is the
-live OTA payload for this example and must be kept in sync with the source. Every version
-bump in `sdkconfig.defaults` must be accompanied by a matching binary push.
+The README must warn explicitly: **never delete `sdkconfig` before `sdkconfig.defaults.local`
+exists**. If sdkconfig is deleted first, credentials revert to placeholder values and the
+built binary will contain the wrong Wi-Fi network name and password.
+
+The README must also note that the binary is **not** a throwaway build artefact — it is the
+live OTA payload and must be kept in sync with `sdkconfig.defaults`. Every version bump must
+be accompanied by a matching binary push.
 
 ## File Layout (non-standard files)
 

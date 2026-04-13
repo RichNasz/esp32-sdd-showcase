@@ -112,41 +112,48 @@ When you change the firmware and want devices to receive it via OTA, you push a 
 to the repository. GitHub raw content serves it at `CONFIG_OTA_SERVER_URL` — within seconds
 of a push, any device that triggers OTA will download the new version.
 
+> **Step order matters.** Credentials must be in a persistent local file **before** you delete
+> `sdkconfig`, otherwise they are lost and the built binary will contain the wrong network name
+> and password.
+
 **Step-by-step:**
 
-1. **Increment the app version** — open `sdkconfig.defaults` and bump `CONFIG_APP_PROJECT_VER`:
-
-   ```
-   CONFIG_APP_PROJECT_VER="1.0.2"   # was "1.0.1"
-   ```
-
-   Commit this alongside the binary so the version in the repo always matches the binary on disk.
-
-2. **Delete the stale `sdkconfig`** so the build re-reads `sdkconfig.defaults`:
+1. **Create `sdkconfig.defaults.local`** (once — it persists across all future builds):
 
    ```sh
-   rm -f sdkconfig sdkconfig.old
-   ```
-
-3. **Re-enter Wi-Fi credentials** (they were in the deleted `sdkconfig`). Use the local
-   override file pattern to avoid re-typing them every time:
-
-   ```sh
-   # Create once — gitignored, never committed:
+   cd examples/secure-ota-https
    cat > sdkconfig.defaults.local << 'EOF'
    CONFIG_OTA_WIFI_SSID="YourNetwork"
    CONFIG_OTA_WIFI_PASSWORD="YourPassword"
    EOF
    ```
 
+   This file is gitignored and never committed. Once it exists you never need to re-enter
+   credentials — it survives clean builds and `sdkconfig` deletions.
+
+2. **Increment the app version** in `sdkconfig.defaults`:
+
+   ```
+   CONFIG_APP_PROJECT_VER="1.0.2"   # was "1.0.1"
+   ```
+
+3. **Delete the stale `sdkconfig`** — now safe because step 1 is complete:
+
+   ```sh
+   rm -f sdkconfig sdkconfig.old
+   ```
+
+   > **Warning:** Never run this step before step 1. Deleting `sdkconfig` removes all
+   > locally-configured values. Without `sdkconfig.defaults.local` in place, credentials
+   > revert to the placeholder values `"myssid"` / `"mypassword"`.
+
 4. **Build** using both defaults files:
 
    ```sh
-   cd examples/secure-ota-https
    idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.local" build
    ```
 
-5. **Copy the binary** to the example root (this is the file tracked by git):
+5. **Copy the binary** to the example root:
 
    ```sh
    cp build/secure_ota_https.bin .
@@ -161,12 +168,12 @@ of a push, any device that triggers OTA will download the new version.
    ```
 
 The binary at `examples/secure-ota-https/secure_ota_https.bin` is tracked by git via the
-`!secure_ota_https.bin` exception in `.gitignore`. It is not a throwaway build artefact —
-it is the live OTA payload. Every version bump must be accompanied by a matching binary push.
+`!secure_ota_https.bin` exception in `.gitignore`. It is the live OTA payload — not a
+throwaway artefact. Every version bump must be accompanied by a matching binary push.
 
-> **Credential reminder:** The Wi-Fi credentials are compiled into the binary. Anyone who
-> downloads the binary from GitHub and extracts it could read the credentials. Use a network
-> that is acceptable for this exposure, or set up a local OTA server for production use.
+> **Credential reminder:** Wi-Fi credentials are compiled into the binary. Anyone who
+> downloads it from GitHub and extracts it could read them. Use a network acceptable for
+> this exposure, or set up a local OTA server for production use.
 
 ### OTA Server Certificate
 
