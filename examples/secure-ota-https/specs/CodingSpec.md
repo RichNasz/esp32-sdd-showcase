@@ -176,6 +176,60 @@ The section must cover the following points, in plain language:
    approach for keeping secrets out of public repositories. The same pattern applies to any
    Kconfig symbol that holds a secret: API keys, MQTT passwords, device tokens, etc.
 
+## Firmware Update Push Workflow (README documentation requirement)
+
+The README must include a dedicated section — "Pushing a Firmware Update" — that explains
+the complete command-line workflow for building a new binary and making it available to
+devices via OTA. The target audience is someone who has already flashed a device and now
+wants to update the firmware the OTA server serves.
+
+The section must cover the following steps, presented as a numbered command-line workflow:
+
+1. **Increment the app version** — open `sdkconfig.defaults` and bump `CONFIG_APP_PROJECT_VER`
+   (e.g. `"1.0.1"` → `"1.0.2"`). This makes the new build identifiable in the dashboard and
+   in the rollback state machine. Commit this change alongside the binary so the version in
+   the repo always matches the binary on disk.
+
+2. **Set Wi-Fi credentials** — ensure `sdkconfig` has real credentials (either via
+   `idf.py menuconfig` or a gitignored `sdkconfig.defaults.local`). The binary will be
+   flashed to devices that use these credentials to connect. See the "Setting Wi-Fi
+   Credentials" section for the safe approach.
+
+3. **Delete stale sdkconfig so sdkconfig.defaults is re-applied** — when `CONFIG_APP_PROJECT_VER`
+   changes in `sdkconfig.defaults`, the existing `sdkconfig` must be removed so the build
+   system re-reads the defaults file. Without this step the version bump has no effect.
+   Then rebuild:
+   ```sh
+   cd examples/secure-ota-https
+   rm -f sdkconfig sdkconfig.old
+   idf.py menuconfig   # re-enter Wi-Fi credentials after sdkconfig is deleted
+   idf.py build
+   ```
+
+4. **Copy the binary to the example root** — the OTA server URL points to
+   `examples/secure-ota-https/secure_ota_https.bin` in the repository root (tracked by git
+   via the `!secure_ota_https.bin` exception in `.gitignore`):
+   ```sh
+   cp build/secure_ota_https.bin .
+   ```
+
+5. **Commit and push** — include both `sdkconfig.defaults` (version bump) and the binary:
+   ```sh
+   git add sdkconfig.defaults secure_ota_https.bin
+   git commit -m "build(secure-ota-https): update OTA binary to v1.0.2"
+   git push
+   ```
+   Within seconds of the push, GitHub raw content serves the new binary at the OTA URL.
+   Any device that triggers OTA will download and flash this version.
+
+6. **Verify** — open the GitHub raw URL in a browser and confirm the file size matches
+   the build output. The OTA client on the device will validate the binary signature and
+   flash integrity before rebooting.
+
+The README must note that the binary is **not** a build artefact to be ignored — it is the
+live OTA payload for this example and must be kept in sync with the source. Every version
+bump in `sdkconfig.defaults` must be accompanied by a matching binary push.
+
 ## File Layout (non-standard files)
 
 - main/Kconfig.projbuild — Wi-Fi SSID/password, OTA server URL

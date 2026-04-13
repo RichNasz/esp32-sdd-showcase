@@ -106,6 +106,68 @@ If a symbol's default value would expose a secret on GitHub, it belongs in
 `sdkconfig` (via menuconfig or a gitignored local defaults file) — not in
 `sdkconfig.defaults`.
 
+### Pushing a Firmware Update
+
+When you change the firmware and want devices to receive it via OTA, you push a new binary
+to the repository. GitHub raw content serves it at `CONFIG_OTA_SERVER_URL` — within seconds
+of a push, any device that triggers OTA will download the new version.
+
+**Step-by-step:**
+
+1. **Increment the app version** — open `sdkconfig.defaults` and bump `CONFIG_APP_PROJECT_VER`:
+
+   ```
+   CONFIG_APP_PROJECT_VER="1.0.2"   # was "1.0.1"
+   ```
+
+   Commit this alongside the binary so the version in the repo always matches the binary on disk.
+
+2. **Delete the stale `sdkconfig`** so the build re-reads `sdkconfig.defaults`:
+
+   ```sh
+   rm -f sdkconfig sdkconfig.old
+   ```
+
+3. **Re-enter Wi-Fi credentials** (they were in the deleted `sdkconfig`). Use the local
+   override file pattern to avoid re-typing them every time:
+
+   ```sh
+   # Create once — gitignored, never committed:
+   cat > sdkconfig.defaults.local << 'EOF'
+   CONFIG_OTA_WIFI_SSID="YourNetwork"
+   CONFIG_OTA_WIFI_PASSWORD="YourPassword"
+   EOF
+   ```
+
+4. **Build** using both defaults files:
+
+   ```sh
+   cd examples/secure-ota-https
+   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.local" build
+   ```
+
+5. **Copy the binary** to the example root (this is the file tracked by git):
+
+   ```sh
+   cp build/secure_ota_https.bin .
+   ```
+
+6. **Commit and push** — include both the version bump and the binary:
+
+   ```sh
+   git add sdkconfig.defaults secure_ota_https.bin
+   git commit -m "build(secure-ota-https): update OTA binary to v1.0.2"
+   git push
+   ```
+
+The binary at `examples/secure-ota-https/secure_ota_https.bin` is tracked by git via the
+`!secure_ota_https.bin` exception in `.gitignore`. It is not a throwaway build artefact —
+it is the live OTA payload. Every version bump must be accompanied by a matching binary push.
+
+> **Credential reminder:** The Wi-Fi credentials are compiled into the binary. Anyone who
+> downloads the binary from GitHub and extracts it could read the credentials. Use a network
+> that is acceptable for this exposure, or set up a local OTA server for production use.
+
 ### OTA Server Certificate
 
 The default `main/server_cert.pem` contains the **ISRG Root X1** root CA. This validates
