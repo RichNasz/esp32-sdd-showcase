@@ -55,6 +55,57 @@ idf.py -p /dev/cu.usbmodem2101 flash monitor
 If the device does not auto-reset for flashing, hold **BOOT**, press **RESET**,
 release **BOOT**, then re-run the command.
 
+### Setting Wi-Fi Credentials
+
+Run menuconfig and fill in your network details under **OTA Configuration**:
+
+```sh
+idf.py menuconfig   # navigate to: OTA Configuration → Wi-Fi SSID / Wi-Fi Password
+```
+
+menuconfig writes the values you enter to a file called `sdkconfig` in the example
+folder. That file is listed in `.gitignore` and is **never committed to git** — your
+real credentials stay on your machine only.
+
+**Why this is safe for a public repository:**
+
+- `sdkconfig.defaults` (the file that _is_ committed) contains only the placeholder
+  strings `"myssid"` and `"mypassword"`. It exists to document the available options,
+  not to hold real values.
+- `sdkconfig` (where menuconfig writes real values) is gitignored. It cannot be
+  accidentally pushed.
+- The build system merges the two at build time: `sdkconfig.defaults` provides
+  factory defaults; `sdkconfig` overrides them with your local values.
+
+**The one rule:** never put real credentials in `sdkconfig.defaults`. That file is in
+git. `sdkconfig` is not.
+
+**Optional — local override file (avoids re-entering after `idf.py fullclean`):**
+
+Create `sdkconfig.defaults.local` alongside `sdkconfig.defaults`:
+
+```
+CONFIG_OTA_WIFI_SSID="MyRealNetwork"
+CONFIG_OTA_WIFI_PASSWORD="MyRealPassword"
+```
+
+Then build with:
+
+```sh
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.local" build
+```
+
+Add `sdkconfig.defaults.local` to your personal global git exclude
+(`~/.config/git/ignore`) so it is never committed regardless of which project you
+are in.
+
+**General principle:** this gitignored-sdkconfig pattern is the standard ESP-IDF
+approach for keeping secrets out of public repositories. It applies to any Kconfig
+symbol that holds a secret: API keys, MQTT passwords, device tokens, and so on.
+If a symbol's default value would expose a secret on GitHub, it belongs in
+`sdkconfig` (via menuconfig or a gitignored local defaults file) — not in
+`sdkconfig.defaults`.
+
 ### OTA Server Certificate
 
 The default `main/server_cert.pem` contains the **ISRG Root X1** root CA. This validates
